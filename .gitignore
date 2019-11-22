@@ -101,5 +101,6 @@ ENV/
 # mypy
 .mypy_cache/
 
-# Pycharm
-.idea/*
+# Hidden files
+.*
+!/.gitignore

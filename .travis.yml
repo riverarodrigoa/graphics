@@ -23,8 +23,8 @@ deploy:
   distributions: sdist bdist_wheel
   user: riverarodrigoa
   password:
-    secure: PLEASE_REPLACE_ME
+    secure:
   on:
     tags: true
     repo: riverarodrigoa/graphics
-    python: 3.8
+    python: 3.6

@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import seaborn as sns
+from netCDF4 import Dataset
 
 
 def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=None, ylabs=None, legend_labs=None,
@@ -128,50 +129,47 @@ def save_dataset(name, df, var_names):
     return None
 
 
-def df_to_plot(folder, case, i=1, path=path):
+def df_to_plot(folder, case, path, df_data, i=1):
     file = case + '_' + str(i) + '.nc'
     data_path = path + 'results/' + folder + '/' + case + '/' + file
     rfile = Dataset(data_path, 'r')
-    NN = np.array(rfile.variables['opt_outputs_ann'][:])
-    DA = np.array(rfile.variables['all_data'][:])
+    nn = np.array(rfile.variables['opt_outputs_ann'][:])
+    da = np.array(rfile.variables['all_data'][:])
     val = np.array(rfile.variables['validation_index'][:], dtype=np.uint32)
     train_rmse = rfile.variables['opt_training_rmse'][:][0]
     test_rmse = rfile.variables['opt_validation_rmse'][:][0]
-    res = pd.DataFrame(data=DA, columns=['CH4'])
-    res['MLP'] = NN
-    res['Time'] = DATA1.index[:]
+    res = pd.DataFrame(data=da, columns=['CH4'])
+    res['MLP'] = nn
+    res['Time'] = df_data.index[:]
     res.set_index('Time', inplace=True)
-    return (res, val, train_rmse, test_rmse)
+    return res, val, train_rmse, test_rmse
 
 
-def plot_ts_residuals(D, val, a, b, start=None, end=None, resolution="D", size=(30, 23), diff=True):
-    import seaborn as sns
-    sns.set_style("whitegrid")
-    sns.set(font_scale=1.7)
-    val_ix = [D.index[val[0]], D.index[val[-1]]]
+def plot_ts_residuals(df_data, val, a, b, start=None, end=None, resolution="D", size=(30, 23), diff=True):
+    val_ix = [df_data.index[val[0]], df_data.index[val[-1]]]
     if start is None:
-        start = D.index[0]
+        start = df_data.index[0]
     if end is None:
-        end = D.index[-1]
+        end = df_data.index[-1]
 
-    D = D.loc[start:end, :]
+    df_data = df_data.loc[start:end, :]
 
-    xticks = pd.date_range(D.index[0], D.index[len(D) - 1], freq=resolution, normalize=False)
+    xticks = pd.date_range(df_data.index[0], df_data.index[len(df_data) - 1], freq=resolution, normalize=False)
 
     if diff:
-        D.loc[:, 'RESIDUAL'] = D.loc[:, 'CH4'] - D.loc[:, 'MLP']
+        df_data.loc[:, 'RESIDUAL'] = df_data.loc[:, 'CH4'] - df_data.loc[:, 'MLP']
 
     c = [['CH4', 'MLP'], ['RESIDUAL']]  # D.columns
     n = len(c)  # len(D.columns)
     colors = plt.cm.get_cmap('Dark2')(np.linspace(0, 1, n))
-    text_RMSE_train = r'$RMSE_{TRAIN} [ppm]: %.4f $' % (a,)
-    text_RMSE_test = r'$RMSE_{TEST} [ppm]: %.4f $' % (b,)
+    text_rmse_train = r'$RMSE_{TRAIN} [ppm]: %.4f $' % (a,)
+    text_rmse_test = r'$RMSE_{TEST} [ppm]: %.4f $' % (b,)
     props = dict(boxstyle='round', alpha=0.5)
     with plt.style.context('seaborn-whitegrid'):
         fig, ax = plt.subplots(nrows=n, sharex=True, figsize=size)
 
         for i in range(0, n):
-            ax[i] = D.loc[:, c[i]].plot(ax=ax[i], style='.', grid=True, xticks=xticks.to_list(), rot=60, ms=2)
+            ax[i] = df_data.loc[:, c[i]].plot(ax=ax[i], style='.', grid=True, xticks=xticks.to_list(), rot=60, ms=2)
             ax[i].lines[0].set_color(colors[i])
             ax[i].legend(markerscale=5, loc='upper right', prop={'size': 14}, bbox_to_anchor=(1, 1.0))
             ax[i].set_xlabel('')
@@ -185,17 +183,13 @@ def plot_ts_residuals(D, val, a, b, start=None, end=None, resolution="D", size=(
             else:
                 ax[i].set_xticklabels('')
 
-        ax[0].text(0.01, 0.98, text_RMSE_train, transform=ax[0].transAxes, fontsize=15, verticalalignment='top', bbox=props)
-        ax[0].text(0.30, 0.98, text_RMSE_test, transform=ax[0].transAxes, fontsize=15, verticalalignment='top', bbox=props)
+        ax[0].text(0.01, 0.98, text_rmse_train, transform=ax[0].transAxes, fontsize=15, verticalalignment='top', bbox=props)
+        ax[0].text(0.30, 0.98, text_rmse_test, transform=ax[0].transAxes, fontsize=15, verticalalignment='top', bbox=props)
 
     return fig
 
 
 def scatter_ts(folder, case, i, size=(30, 23)):
-    import seaborn as sns
-    sns.set_style("whitegrid")
-    sns.set(font_scale=1.7)
-
     n = len(i)
     colors = plt.cm.get_cmap('Dark2')(np.linspace(0, 1, n))
 
@@ -210,10 +204,6 @@ def scatter_ts(folder, case, i, size=(30, 23)):
 
 
 def comp_study_plot(path, folder, studies, name_studies=None, size=(20, 10)):
-    import seaborn as sns
-    import matplotlib.ticker as ticker
-    sns.set_style("whitegrid")
-    sns.set(font_scale=1.7)
     y_labs = ['RMSE (ppm)', 'BIAS (ppm)', '$\sigma / \sigma_{DATA}$ (%)', r'$\rho$ (%)']
 
     if name_studies is None:

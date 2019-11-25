@@ -47,11 +47,11 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
         for i in range(0, n):
             colors2 = plt.cm.get_cmap('Set2')
             if i == keys:
-                ax[i, 0] = d.loc[:, vars_comp[i][0]].plot(ax=ax[i, 0], style='.', grid=True, xticks=xticks.to_list(), rot=0, ms=3, alpha=alpha)
+                ax[i, 0] = d.loc[:, vars_comp[i][0]].plot(ax=ax[i, 0], style='.', grid=True, rot=0, ms=3, alpha=alpha) #xticks=xticks.to_list()
                 for j in range(1, len(sec[keys[0]])):
-                    ax[i, 0] = d.loc[:, vars_comp[i][j]].plot(ax=ax[i, 0], secondary_y=True, style='.', grid=True, xticks=xticks.to_list(), rot=0, ms=3, alpha=alpha)
+                    ax[i, 0] = d.loc[:, vars_comp[i][j]].plot(ax=ax[i, 0], secondary_y=True, style='.', grid=True, rot=0, ms=3, alpha=alpha)
             else:
-                ax[i, 0] = d.loc[:, vars_comp[i]].plot(ax=ax[i, 0], style='.', cmap=colors2, grid=True, xticks=xticks.to_list(), rot=0, ms=2, alpha=alpha)
+                ax[i, 0] = d.loc[:, vars_comp[i]].plot(ax=ax[i, 0], style='.', cmap=colors2, grid=True, rot=0, ms=2, alpha=alpha)
 
             if comp_in_subplot:
                 [ax[i, 0].lines[k].set_color(color) for k, color in enumerate(cmp_colors)]
@@ -93,8 +93,10 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
                     ax[i, 0].axvline(x=k, color='r', linestyle='--')
             if i == n - 1:
                 if "H" in resolution:
+                    ax[i, 0].set_xticklabels('')
                     ax[i, 0].set_xticklabels(xticks.strftime('%d-%b %H:%M').tolist(), horizontalalignment='center', fontsize=fontsize)
                 else:
+                    ax[i, 0].set_xticklabels('')
                     ax[i, 0].set_xticklabels(xticks.strftime('%d-%b').tolist(), horizontalalignment='center', fontsize=fontsize)
                 ax[i, 0].tick_params(axis='x', pad=10)
             else:

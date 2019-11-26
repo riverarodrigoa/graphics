@@ -3,7 +3,7 @@ Graphics
 ========
 
 
-.. image:: https://img.shields.io/pypi/v/graphics.svg
+.. #image:: https://img.shields.io/pypi/v/graphics.svg
         :target: https://pypi.python.org/pypi/graphics
 
 .. image:: https://img.shields.io/travis/riverarodrigoa/graphics.svg
@@ -16,7 +16,7 @@ Graphics
 
 
 
-Some useful functions to plot dataframes an other stuff
+Some useful functions to plot dataframes an other stuff.
 
 
 * Free software: MIT license
@@ -27,11 +27,3 @@ Features
 --------
 
 * TODO
-
-Credits
--------
-
-This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
-
-.. _Cookiecutter: https://github.com/audreyr/cookiecutter
-.. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage

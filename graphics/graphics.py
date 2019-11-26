@@ -181,7 +181,7 @@ def plot_ts_residuals(df_data, val, a, b, start=None, end=None, resolution="D", 
             ax[i].axvspan(val_ix[0], val_ix[1], facecolor='blue', alpha=0.15)
             if i == n - 1:
                 if resolution == "D":
-                    ax[i].set_xticklabels(xticks.strftime('%b-%d').tolist(), horizontalalignment='center', fontsize=14);
+                    ax[i].set_xticklabels(xticks.strftime('%b-%d').tolist(), horizontalalignment='center', fontsize=14)
                 # else:
                 #     ax[i].set_xticklabels(xticks.strftime('%b-%d %H:%M').tolist(), horizontalalignment='center', fontsize=14);
             else:

@@ -384,8 +384,6 @@ class MLP:
         self.n_loops = n_loops
         self.n_procs = n_procs
 
-        # We store all the values to make statistics
-        # Beware that the vectors (tmp_training_costf,...) have different lengths depending on the processors
         training_costf_arr = np.zeros((self.n_opt, self.n_loops))  # <-the +1 stands for the mean
         validation_costf_arr = np.zeros((self.n_opt, self.n_loops))  # <-the +1 stands for the mean
         xx_arr = np.zeros((self.n_opt, self.n_loops, self.n_par))
@@ -515,7 +513,6 @@ class MLP:
         ncvar = wfile.createVariable('validation_index', 'i', ('n_validation',))
         ncvar[:] = self.validation_index
         wfile.close()
-        # print("*** Results saved ***")
 
 
 def main(var1, var2):

@@ -1,6 +1,6 @@
-* Graphics version:
-* Python version:
-* Operating System:
+    * Graphics version:
+    * Python version:
+    * Operating System:
 
 ### Description
 

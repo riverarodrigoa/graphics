@@ -5,10 +5,10 @@
 
 
 import unittest
-from click.testing import CliRunner
+# from click.testing import CliRunner
 
-from graphics import graphics
-from graphics import cli
+# from graphics import graphics
+# from graphics import cli
 
 
 class TestGraphics(unittest.TestCase):

@@ -13,6 +13,9 @@ Graphics
         :target: https://graphics.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
+.. image:: https://api.codacy.com/project/badge/Grade/e9474af906764b30931a6f0222c1839b
+   :alt: Codacy Badge
+   :target: https://app.codacy.com/manual/riverarodrigoa/graphics?utm_source=github.com&utm_medium=referral&utm_content=riverarodrigoa/graphics&utm_campaign=Badge_Grade_Dashboard
 
 
 
@@ -29,6 +32,3 @@ Features
 * TODO
 
 
-.. image:: https://api.codacy.com/project/badge/Grade/e9474af906764b30931a6f0222c1839b
-   :alt: Codacy Badge
-   :target: https://app.codacy.com/manual/riverarodrigoa/graphics?utm_source=github.com&utm_medium=referral&utm_content=riverarodrigoa/graphics&utm_campaign=Badge_Grade_Dashboard

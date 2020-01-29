@@ -134,7 +134,7 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
 
 
 def norm(x, type_norm=1, stats=None):
-    assert isinstance(x, pd.DataFrame), "[ERROR]: X must be a pandas DataFrame."
+    # assert isinstance(x, pd.DataFrame), "[ERROR]: X must be a pandas DataFrame."
     if not isinstance(stats, pd.DataFrame):
         stats = x.describe().transpose()
 

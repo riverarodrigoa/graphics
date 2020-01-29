@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import seaborn as sns
-from netCDF4 import Dataset
+# from netCDF4 import Dataset
 import string
 from sklearn.metrics import mean_squared_error as mse
 
@@ -296,7 +296,7 @@ def plot_ts_residuals2(df_data, val, a, b, start=None, end=None, resolution="D",
     df_data = df_data.loc[start:end, :]
     xticks = pd.date_range(df_data.index[0], df_data.index[len(df_data) - 1], freq=resolution, normalize=False)
     df_data.loc[:, 'RESIDUAL'] = df_data.loc[:, 'CH4'] - df_data.loc[:, 'MLP']
-    c = [['CH4', 'MLP'], ['RESIDUAL']]  # D.columns
+    # c = [['CH4', 'MLP'], ['RESIDUAL']]  # D.columns
     leg = [['Reference', 'Model'], ['Residual']]
     text_rmse_train = r'$MSD_{TRAIN} [ppm]: %.4f $' % (a * a,)
     text_rmse_test = r'$MSD_{TEST} [ppm]: %.4f $' % (b * b,)
@@ -333,7 +333,8 @@ def plot_ts_residuals2(df_data, val, a, b, start=None, end=None, resolution="D",
     return fig
 
 
-def plot_ts_residuals3(df_data, ytrain_true, ytrain_model, ytest_true, ytest_model, start=None, end=None, residual=True, style='.', resolution="D", size=(30, 23), fontsize=14):
+def plot_ts_residuals3(df_data, ytrain_true, ytrain_model, ytest_true, ytest_model, start=None, end=None, residual=True,
+                       style='.', resolution="D", size=(30, 23), fontsize=14):
     sns.set(font_scale=1.3)
     val_ix = [ytest_true.index[0], ytest_true.index[-1]]
     start = df_data.index[0] if start is None else start
@@ -349,7 +350,7 @@ def plot_ts_residuals3(df_data, ytrain_true, ytrain_model, ytest_true, ytest_mod
         ax_idx = 1
     else:
         n = 1
-        c = [['REF', 'Model']]  # D.columns
+        # c = [['REF', 'Model']]  # D.columns
         leg = [['Reference', 'Model']]
         ax_idx = 0
 

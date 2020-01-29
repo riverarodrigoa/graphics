@@ -13,7 +13,7 @@ from sklearn.metrics import mean_squared_error as mse
 def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=None, ylabs=None, legend_labs=None,
                        ylims=None, mask_date=None, vline=None, resolution=None, file_name=None, figsize=(30, 23),
                        alpha=1.0, fontsize=14, interplotspace=(None, None), comp_in_subplot=False,
-                       reverse=[]):
+                       reverse=()):
     sns.set(font_scale=1.3)
     if start is None:
         start = da.index[0]
@@ -71,7 +71,8 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
                                                        rot=0, ms=3, alpha=alpha)
 
             if comp_in_subplot:
-                [ax[i, 0].lines[k].set_color(color) for k, color in enumerate(cmp_colors)]
+                for k, color in enumerate(cmp_colors):
+                    ax[i, 0].lines[k].set_color(color)
 
             else:
                 if i == 0:
@@ -345,7 +346,7 @@ def plot_ts_residuals3(df_data, ytrain_true, ytrain_model, ytest_true, ytest_mod
     if residual:
         n = 2
         df_data.loc[:, 'RESIDUAL'] = df_data.loc[:, 'REF'] - df_data.loc[:, 'Model']
-        c = [['REF', 'Model'], ['RESIDUAL']]  # D.columns
+        # c = [['REF', 'Model'], ['RESIDUAL']]  # D.columns
         leg = [['Reference', 'Model'], ['Residual']]
         ax_idx = 1
     else:

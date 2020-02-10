@@ -3,7 +3,8 @@ from __future__ import print_function, division, with_statement
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
+# import matplotlib.ticker as ticker
+import matplotlib.dates as mdates
 import seaborn as sns
 # from netCDF4 import Dataset
 import string
@@ -12,9 +13,10 @@ from sklearn.metrics import mean_squared_error as mse
 
 def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=None, ylabs=None, legend_labs=None,
                        ylims=None, mask_date=None, vline=None, resolution=None, file_name=None, figsize=(30, 23),
-                       alpha=1.0, fontsize=14, interplotspace=(None, None), comp_in_subplot=False,
-                       reverse=()):
+                       alpha=1.0, fontsize=16, interplotspace=(None, None), comp_in_subplot=False,
+                       reverse=(), style=None, grid_plot=True, marker_size=4):
     sns.set(font_scale=1.3)
+    sns.set_style("ticks")
     if start is None:
         start = da.index[0]
     if end is None:
@@ -33,42 +35,39 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
     else:
         keys = sec.keys()[0]
 
+    if style is None:
+        style = '.'
+
     da = da.loc[start:end, :]
     d = da.copy()
     dqq = d.quantile(q=qq, axis=0)
-
-    xticks = pd.date_range(d.index[0], d.index[len(d) - 1], freq=resolution, normalize=False)  #
-    if mask_date is not None:
-        xticks = xticks[(xticks < mask_date[0]) | (xticks > mask_date[1])]
+    cmap = 'Set2'
     n = len(ylabs)
-    # c = d.columns
-    colors = plt.cm.get_cmap('tab10')(np.linspace(0, 1, n + 1))
+    colors = plt.cm.get_cmap(cmap)(np.linspace(0, 1, n + 1))
     if comp_in_subplot:
         c = len(max(vars_comp))
-        cmp_colors = plt.cm.get_cmap('Set1')(np.linspace(0, 1, c))
-    # colors2 = plt.cm.get_cmap('tab10')(np.linspace(0, 1, len(c)))
+        cmp_colors = plt.cm.get_cmap(cmap)(np.linspace(0, 1, c))
     with plt.style.context('seaborn-whitegrid'):
         fig, ax = plt.subplots(nrows=n, sharex=True, figsize=figsize, squeeze=False)
-
+        colors2 = plt.cm.get_cmap(cmap)
         for i in range(0, n):
-            colors2 = plt.cm.get_cmap('Set2')
-            if i == keys:
+            if i == keys: # Secondary axes
                 ax[i, 0] = d.loc[:, vars_comp[i][0]].plot(ax=ax[i, 0],
-                                                          style='.', grid=True,
-                                                          xticks=xticks.to_list(),
-                                                          rot=0, ms=3, alpha=alpha)
+                                                          style=style, grid=grid_plot,
+                                                          # xticks=xticks.to_list(),
+                                                          rot=0, ms=marker_size, alpha=alpha)
                 for j in range(1, len(sec[keys[0]])):
                     ax[i, 0] = d.loc[:, vars_comp[i][j]].plot(ax=ax[i, 0],
                                                               secondary_y=True,
-                                                              style='.', grid=True,
-                                                              xticks=xticks.to_list(),
-                                                              rot=0, ms=3, alpha=alpha)
+                                                              style=style, grid=grid_plot,
+                                                              # xticks=xticks.to_list(),
+                                                              rot=0, ms=marker_size, alpha=alpha)
             else:
                 ax[i, 0] = d.loc[:, vars_comp[i]].plot(ax=ax[i, 0],
-                                                       style='.',
-                                                       cmap=colors2, grid=True,
-                                                       xticks=xticks.to_list(),
-                                                       rot=0, ms=3, alpha=alpha)
+                                                       style=style,
+                                                       cmap=colors2, grid=grid_plot,
+                                                       # xticks=xticks.to_list(),
+                                                       rot=0, ms=marker_size, alpha=alpha)
 
             if comp_in_subplot:
                 for k, color in enumerate(cmp_colors):
@@ -79,7 +78,7 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
                     ax[i, 0].lines[0].set_color('r')
                 else:
                     if i != 1:
-                        ax[i, 0].lines[0].set_color(colors[i + 1])
+                        ax[i, 0].lines[0].set_color(colors[i])
 
             if legend_labs is not None:
                 ax[i, 0].legend(legend_labs[i], markerscale=5, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
@@ -105,8 +104,41 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
             ax[i, 0].ticklabel_format(axis='y', style='sci', scilimits=(-2, 2), useMathText=True)
             # ax[i, 0].yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.2f'))
             ax[i, 0].yaxis.set_tick_params(labelsize=fontsize)
-            ax[i, 0].yaxis.set_minor_locator(ticker.AutoMinorLocator())
-            ax[i, 0].xaxis.set_minor_locator(ticker.AutoMinorLocator())
+            ax[i, 0].xaxis.set_tick_params(labelsize=fontsize)
+            # ax[i, 0].yaxis.set_minor_locator(ticker.AutoMinorLocator())
+            # ax[i, 0].xaxis.set_minor_locator(ticker.AutoMinorLocator())
+            locator = mdates.AutoDateLocator(minticks=7, maxticks=10)
+            formatter = mdates.ConciseDateFormatter(locator)
+            formatter.formats = ['%y',  # ticks are mostly years
+                                 '%b',  # ticks are mostly months
+                                 '%d',  # ticks are mostly days
+                                 '%H:%M',  # hrs
+                                 '%H:%M',  # min
+                                 '%S.%f', ]  # secs
+            # these are mostly just the level above...
+            formatter.zero_formats = [''] + formatter.formats[:-1]
+            # ...except for ticks that are mostly hours, then it is nice to have
+            # month-day:
+            formatter.zero_formats[2] = '%d-%b'
+
+            formatter.offset_formats = ['',
+                                        '',
+                                        '',
+                                        '',
+                                        '%b %Y',
+                                        '%d %b %Y %H:%M', ]
+
+            ax[i, 0].xaxis.set_major_locator(locator)
+            ax[i, 0].xaxis.set_major_formatter(formatter)
+            ax[i, 0].xaxis.set_minor_locator(mdates.DayLocator())
+            # ax[i, 0].xaxis.set_minor_locator(ticker.AutoMinorLocator(7))
+            # ax[i, 0].xaxis.grid(True, which='minor')
+            ax[i, 0].tick_params(which='minor', length=4, color='k')
+
+            ax[i, 0].spines['left'].set_linewidth(2)
+            ax[i, 0].spines['left'].set_color('gray')
+            ax[i, 0].spines['bottom'].set_linewidth(2)
+            ax[i, 0].spines['bottom'].set_color('gray')
 
             if len(reverse) != 0:
                 if reverse[i] in vars_comp[i]:
@@ -115,17 +147,11 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
             if vline is not None:
                 for k in vline:
                     ax[i, 0].axvline(x=k, color='r', linestyle='--')
-            if i == n - 1:
-                if "H" in resolution:
-                    # ax[i, 0].set_xticklabels('')
-                    ax[i, 0].set_xticklabels(xticks.strftime('%d-%b %H:%M').tolist(), horizontalalignment='center', fontsize=fontsize)
-                else:
-                    # ax[i, 0].set_xticklabels('')
-                    ax[i, 0].set_xticklabels(xticks.strftime('%d-%b').tolist(), horizontalalignment='center', fontsize=fontsize)
 
-                ax[i, 0].tick_params(axis='x', pad=10)
-            else:
+            if i != n - 1:
                 ax[i, 0].set_xticklabels('')
+
+            plt.xticks(ha='center')
 
             fig.align_ylabels(ax[:, 0])
     plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=interplotspace[0], hspace=interplotspace[1])
@@ -157,6 +183,257 @@ def save_dataset(name, df, var_names):
     np.save(name + '.npy', data, allow_pickle=True, fix_imports=True)
     return None
 
+
+def plot_ts_residuals2(df_data, val, a, b, start=None, end=None, resolution="D", size=(30, 23), fontsize=14):
+    sns.set(font_scale=1.3)
+    val_ix = [df_data.index[val[0]], df_data.index[val[-1]]]
+    if start is None:
+        start = df_data.index[0]
+    if end is None:
+        end = df_data.index[-1]
+
+    df_data = df_data.loc[start:end, :]
+    xticks = pd.date_range(df_data.index[0], df_data.index[len(df_data) - 1], freq=resolution, normalize=False)
+    df_data.loc[:, 'RESIDUAL'] = df_data.loc[:, 'CH4'] - df_data.loc[:, 'MLP']
+    # c = [['CH4', 'MLP'], ['RESIDUAL']]  # D.columns
+    leg = [['Reference', 'Model'], ['Residual']]
+    text_rmse_train = r'$MSD_{TRAIN} [ppm]: %.4f $' % (a * a,)
+    text_rmse_test = r'$MSD_{TEST} [ppm]: %.4f $' % (b * b,)
+    props = dict(boxstyle='round', alpha=0.5)
+    colors = plt.cm.get_cmap('Set2')(np.linspace(0, 1, 3))
+    colors2 = plt.cm.get_cmap('Set2')
+    with plt.style.context('seaborn-whitegrid'):
+        fig, ax = plt.subplots(nrows=2, sharex=True, figsize=size)
+        ax[0] = df_data.loc[:, ['CH4', 'MLP']].plot(ax=ax[0], style='.', cmap=colors2, grid=True, xticks=xticks.to_list(), rot=0, ms=3)
+        ax[0].lines[0].set_color('r')
+        ax[0].lines[1].set_color('b')
+        ax[0].legend(leg[0], markerscale=5, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
+        ax[0].set_xlabel('')
+        ax[0].set_ylabel('$CH_{4}$ [ppm]', fontdict={'size': fontsize})
+        ax[0].axvspan(val_ix[0], val_ix[1], facecolor='blue', alpha=0.15)
+
+        ax[1] = df_data.loc[:, ['RESIDUAL']].plot(ax=ax[1], style='.', cmap=colors2, grid=True, xticks=xticks.to_list(), rot=0, ms=3)
+        ax[1].lines[0].set_color(colors[2])
+        ax[1].legend(leg[1], markerscale=5, loc='center left', bbox_to_anchor=(1, 0.5), prop={'size': fontsize})
+        ax[1].set_xlabel('Date')
+        ax[1].set_ylabel('Residual [ppm]', fontdict={'size': fontsize})
+        ax[1].axvspan(val_ix[0], val_ix[1], facecolor='blue', alpha=0.15)
+        if "D" in resolution:
+            ax[1].set_xticklabels(xticks.strftime('%b-%d').tolist(), horizontalalignment='center', fontsize=fontsize)
+        else:
+            ax[1].set_xticklabels(xticks.strftime('%b-%d %H:%M').tolist(), horizontalalignment='center', fontsize=fontsize)
+
+        ax[0].text(0.01, 0.98, text_rmse_train, transform=ax[0].transAxes, fontsize=15, verticalalignment='top', bbox=props)
+        ax[0].text(0.30, 0.98, text_rmse_test, transform=ax[0].transAxes, fontsize=15, verticalalignment='top', bbox=props)
+    fig.align_ylabels(ax[:])
+
+    for n, a in enumerate(ax):
+        a.text(-0.1, 1.1, string.ascii_uppercase[n], transform=a.transAxes, size=16, weight='bold')
+    return fig
+
+
+def plot_ts_residuals4(df_data, ytrain_true, ytrain_model, ytest_true, ytest_model, start=None, end=None, residual=True,
+                       style='.', resolution="D", size=(30, 23), fontsize=14):
+    sns.set(font_scale=1.3)
+    val_ix = [ytest_true.index[0], ytest_true.index[-1]]
+    start = df_data.index[0] if start is None else start
+    end = df_data.index[-1] if end is None else end
+
+    df_data = df_data.loc[start:end, :]
+
+    if residual:
+        n = 2
+        df_data.loc[:, 'RESIDUAL'] = df_data.loc[:, 'REF'] - df_data.loc[:, 'Model']
+        # c = [['REF', 'Model'], ['RESIDUAL']]  # D.columns
+        leg = [['Reference', 'Model'], ['Residual']]
+        ax_idx = 1
+    else:
+        n = 1
+        # c = [['REF', 'Model']]  # D.columns
+        leg = [['Reference', 'Model']]
+        ax_idx = 0
+
+    a = mse(ytrain_true.values, ytrain_model)
+    b = mse(ytest_true.values, ytest_model)
+    xticks = pd.date_range(df_data.index[0], df_data.index[len(df_data) - 1], freq=resolution, normalize=False)
+
+    text_rmse_train = r'$MSD_{TRAIN}: %.4f $' % (a,)
+    text_rmse_test = r'$MSD_{TEST}: %.4f $' % (b,)
+    props = dict(boxstyle='round', alpha=0.5)
+    colors = plt.cm.get_cmap('Set2')(np.linspace(0, 1, 3))
+    colors2 = plt.cm.get_cmap('Set2')
+
+    locator = mdates.AutoDateLocator(minticks=7, maxticks=10)
+    formatter = mdates.ConciseDateFormatter(locator)
+    formatter.formats = ['%y',  # ticks are mostly years
+                         '%b',  # ticks are mostly months
+                         '%d',  # ticks are mostly days
+                         '%H:%M',  # hrs
+                         '%H:%M',  # min
+                         '%S.%f', ]  # secs
+    # these are mostly just the level above...
+    formatter.zero_formats = [''] + formatter.formats[:-1]
+    # ...except for ticks that are mostly hours, then it is nice to have
+    # month-day:
+    formatter.zero_formats[2] = '%d-%b'
+
+    formatter.offset_formats = ['',
+                                '',
+                                '',
+                                '%d %b %Y',
+                                '%d %b %Y',
+                                '%d %b %Y %H:%M', ]
+
+    with plt.style.context('seaborn-whitegrid'):
+        ax = plt.subplots(nrows=n, sharex=True, figsize=size, squeeze=False)
+        ax[0, 0] = df_data.loc[:, ['REF', 'Model']].plot(ax=ax[0, 0], style=style, cmap=colors2, grid=True, rot=0, ms=3)
+        ax[0, 0].lines[0].set_color('r')
+        ax[0, 0].lines[1].set_color('b')
+        ax[0, 0].legend(leg[0], markerscale=5, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
+        ax[0, 0].set_xlabel('')
+        ax[0, 0].set_ylabel('$CH_{4}$ [ppm]', fontdict={'size': fontsize})
+        ax[0, 0].axvspan(val_ix[0], val_ix[1], facecolor='blue', alpha=0.15)
+        ax[0, 0].xaxis.set_major_locator(locator)
+        ax[0, 0].xaxis.set_major_formatter(formatter)
+        ax[0, 0].spines['left'].set_linewidth(2)
+        ax[0, 0].spines['left'].set_color('gray')
+        ax[0, 0].spines['bottom'].set_linewidth(2)
+        ax[0, 0].spines['bottom'].set_color('gray')
+
+        if residual:
+            ax[1, 0] = df_data.loc[:, ['RESIDUAL']].plot(ax=ax[1, 0], style=style, cmap=colors2, grid=True, xticks=xticks.to_list(), rot=0, ms=3)
+            ax[1, 0].lines[0].set_color(colors[2])
+            ax[1, 0].legend(leg[1], markerscale=5, loc='center left', bbox_to_anchor=(1, 0.5), prop={'size': fontsize})
+            ax[1, 0].set_xlabel('Date')
+            ax[1, 0].set_ylabel('Residual [ppm]', fontdict={'size': fontsize})
+            ax[1, 0].axvspan(val_ix[0], val_ix[1], facecolor='blue', alpha=0.15)
+            ax[1, 0].xaxis.set_major_locator(locator)
+            ax[1, 0].xaxis.set_major_formatter(formatter)
+            ax[1, 0].spines['left'].set_linewidth(2)
+            ax[1, 0].spines['left'].set_color('gray')
+            ax[1, 0].spines['bottom'].set_linewidth(2)
+            ax[1, 0].spines['bottom'].set_color('gray')
+
+        ax[0, 0].text(0.01, 0.98, text_rmse_train, transform=ax[0, 0].transAxes, fontsize=15, verticalalignment='top', bbox=props)
+        ax[1, 0].text(0.30, 0.98, text_rmse_test, transform=ax[1, 0].transAxes, fontsize=15, verticalalignment='top', bbox=props)
+
+    if residual:
+        # for k, a in enumerate(ax):
+        ax[0, 0].text(-0.1, 1.1, string.ascii_uppercase[0], transform=ax[0, 0].transAxes, size=16, weight='bold')
+        ax[1, 0].text(-0.1, 1.1, string.ascii_uppercase[1], transform=ax[1, 0].transAxes, size=16, weight='bold')
+
+
+def plot_ts_residuals3(df_data, ytrain_true, ytrain_model, ytest_true, ytest_model, start=None, end=None, residual=True,
+                       style='.', resolution="D", size=(30, 23), fontsize=14, axs=None):
+    sns.set(font_scale=1.3)
+    val_ix = [ytest_true.index[0], ytest_true.index[-1]]
+    start = df_data.index[0] if start is None else start
+    end = df_data.index[-1] if end is None else end
+
+    if axs is not None:
+        n_ax = len(axs)
+
+    df_data = df_data.loc[start:end, :]
+
+    if residual:
+        n = 2
+        df_data.loc[:, 'RESIDUAL'] = df_data.loc[:, 'REF'] - df_data.loc[:, 'Model']
+        # c = [['REF', 'Model'], ['RESIDUAL']]  # D.columns
+        leg = [['Reference', 'Model'], ['Residual']]
+        # ax_idx = 1
+    else:
+        n = 1
+        # c = [['REF', 'Model']]  # D.columns
+        leg = [['Reference', 'Model']]
+        # ax_idx = 0
+
+    a = mse(ytrain_true.values, ytrain_model)
+    b = mse(ytest_true.values, ytest_model)
+    xticks = pd.date_range(df_data.index[0], df_data.index[len(df_data) - 1], freq=resolution, normalize=False)
+
+    text_rmse_train = r'$MSD_{TRAIN}: %.4f $' % (a,)
+    text_rmse_test = r'$MSD_{TEST}: %.4f $' % (b,)
+    props = dict(boxstyle='round', alpha=0.5)
+    colors = plt.cm.get_cmap('Set2')(np.linspace(0, 1, 3))
+    colors2 = plt.cm.get_cmap('Set2')
+
+    locator = mdates.AutoDateLocator(minticks=7, maxticks=10)
+    formatter = mdates.ConciseDateFormatter(locator)
+    formatter.formats = ['%y',  # ticks are mostly years
+                         '%b',  # ticks are mostly months
+                         '%d',  # ticks are mostly days
+                         '%H:%M',  # hrs
+                         '%H:%M',  # min
+                         '%S.%f', ]  # secs
+    # these are mostly just the level above...
+    formatter.zero_formats = [''] + formatter.formats[:-1]
+    # ...except for ticks that are mostly hours, then it is nice to have
+    # month-day:
+    formatter.zero_formats[2] = '%d-%b'
+
+    formatter.offset_formats = ['',
+                                '%Y',
+                                '%Y',
+                                '%d %b %Y',
+                                '%d %b %Y',
+                                '%d %b %Y %H:%M', ]
+
+    with plt.style.context('seaborn-whitegrid'):
+        if axs is None:
+                fig, (ax1, ax2) = plt.subplots(nrows=n, sharex=True, figsize=size, squeeze=False)
+        else:
+            if n_ax == 2:
+                ax1 = axs[0]
+                ax2 = axs[1]
+            else:
+                ax1 = axs[0]
+        ax1 = df_data.loc[:, ['REF', 'Model']].plot(ax=ax1, style=style, cmap=colors2, grid=True, rot=0, ms=3)
+        ax1.lines[0].set_color('r')
+        ax1.lines[1].set_color('b')
+        ax1.legend(leg[0], markerscale=5, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
+        ax1.set_xlabel('')
+        ax1.set_ylabel('$CH_{4}$ [ppm]', fontdict={'size': fontsize})
+        ax1.axvspan(val_ix[0], val_ix[1], facecolor='blue', alpha=0.15)
+        ax1.xaxis.set_major_locator(locator)
+        ax1.xaxis.set_major_formatter(formatter)
+        ax1.spines['left'].set_linewidth(2)
+        ax1.spines['left'].set_color('gray')
+        ax1.spines['bottom'].set_linewidth(2)
+        ax1.spines['bottom'].set_color('gray')
+
+        if residual:
+            ax2 = df_data.loc[:, ['RESIDUAL']].plot(ax=ax2, style=style, cmap=colors2, grid=True, xticks=xticks.to_list(), rot=0, ms=3)
+            ax2.lines[0].set_color(colors[2])
+            ax2.legend(leg[1], markerscale=5, loc='center left', bbox_to_anchor=(1, 0.5), prop={'size': fontsize})
+            ax2.set_xlabel('Date')
+            ax2.set_ylabel('Residual [ppm]', fontdict={'size': fontsize})
+            ax2.axvspan(val_ix[0], val_ix[1], facecolor='blue', alpha=0.15)
+            ax2.xaxis.set_major_locator(locator)
+            ax2.xaxis.set_major_formatter(formatter)
+            ax2.spines['left'].set_linewidth(2)
+            ax2.spines['left'].set_color('gray')
+            ax2.spines['bottom'].set_linewidth(2)
+            ax2.spines['bottom'].set_color('gray')
+
+        ax1.text(0.01, 0.98, text_rmse_train, transform=ax1.transAxes, fontsize=15, verticalalignment='top', bbox=props)
+        ax1.text(0.30, 0.98, text_rmse_test, transform=ax1.transAxes, fontsize=15, verticalalignment='top', bbox=props)
+    if axs is None:
+        fig.align_ylabels([ax1, ax2])
+
+    if residual:
+        # for k, a in enumerate(ax):
+        ax1.text(-0.1, 1.1, string.ascii_uppercase[0], transform=ax1.transAxes, size=16, weight='bold')
+        ax2.text(-0.1, 1.1, string.ascii_uppercase[1], transform=ax2.transAxes, size=16, weight='bold')
+    if axs is not None:
+        if n_ax == 2:
+            return ax1, ax2
+        else:
+            return ax1
+
+
+
+
+########## OLD Functions ################
 
 # def df_to_plot(folder, case, path, df_data, i=1):
 #     file = case + '_' + str(i) + '.nc'
@@ -284,115 +561,3 @@ def save_dataset(name, df, var_names):
 #                 ax[i, 0].yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.2f'))
 #
 #     return fig
-
-
-def plot_ts_residuals2(df_data, val, a, b, start=None, end=None, resolution="D", size=(30, 23), fontsize=14):
-    sns.set(font_scale=1.3)
-    val_ix = [df_data.index[val[0]], df_data.index[val[-1]]]
-    if start is None:
-        start = df_data.index[0]
-    if end is None:
-        end = df_data.index[-1]
-
-    df_data = df_data.loc[start:end, :]
-    xticks = pd.date_range(df_data.index[0], df_data.index[len(df_data) - 1], freq=resolution, normalize=False)
-    df_data.loc[:, 'RESIDUAL'] = df_data.loc[:, 'CH4'] - df_data.loc[:, 'MLP']
-    # c = [['CH4', 'MLP'], ['RESIDUAL']]  # D.columns
-    leg = [['Reference', 'Model'], ['Residual']]
-    text_rmse_train = r'$MSD_{TRAIN} [ppm]: %.4f $' % (a * a,)
-    text_rmse_test = r'$MSD_{TEST} [ppm]: %.4f $' % (b * b,)
-    props = dict(boxstyle='round', alpha=0.5)
-    colors = plt.cm.get_cmap('Set2')(np.linspace(0, 1, 3))
-    colors2 = plt.cm.get_cmap('Set2')
-    with plt.style.context('seaborn-whitegrid'):
-        fig, ax = plt.subplots(nrows=2, sharex=True, figsize=size)
-        ax[0] = df_data.loc[:, ['CH4', 'MLP']].plot(ax=ax[0], style='.', cmap=colors2, grid=True, xticks=xticks.to_list(), rot=0, ms=3)
-        ax[0].lines[0].set_color('r')
-        ax[0].lines[1].set_color('b')
-        ax[0].legend(leg[0], markerscale=5, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
-        ax[0].set_xlabel('')
-        ax[0].set_ylabel('$CH_{4}$ [ppm]', fontdict={'size': fontsize})
-        ax[0].axvspan(val_ix[0], val_ix[1], facecolor='blue', alpha=0.15)
-
-        ax[1] = df_data.loc[:, ['RESIDUAL']].plot(ax=ax[1], style='.', cmap=colors2, grid=True, xticks=xticks.to_list(), rot=0, ms=3)
-        ax[1].lines[0].set_color(colors[2])
-        ax[1].legend(leg[1], markerscale=5, loc='center left', bbox_to_anchor=(1, 0.5), prop={'size': fontsize})
-        ax[1].set_xlabel('Date')
-        ax[1].set_ylabel('Residual [ppm]', fontdict={'size': fontsize})
-        ax[1].axvspan(val_ix[0], val_ix[1], facecolor='blue', alpha=0.15)
-        if "D" in resolution:
-            ax[1].set_xticklabels(xticks.strftime('%b-%d').tolist(), horizontalalignment='center', fontsize=fontsize)
-        else:
-            ax[1].set_xticklabels(xticks.strftime('%b-%d %H:%M').tolist(), horizontalalignment='center', fontsize=fontsize)
-
-        ax[0].text(0.01, 0.98, text_rmse_train, transform=ax[0].transAxes, fontsize=15, verticalalignment='top', bbox=props)
-        ax[0].text(0.30, 0.98, text_rmse_test, transform=ax[0].transAxes, fontsize=15, verticalalignment='top', bbox=props)
-    fig.align_ylabels(ax[:])
-
-    for n, a in enumerate(ax):
-        a.text(-0.1, 1.1, string.ascii_uppercase[n], transform=a.transAxes, size=16, weight='bold')
-    return fig
-
-
-def plot_ts_residuals3(df_data, ytrain_true, ytrain_model, ytest_true, ytest_model, start=None, end=None, residual=True,
-                       style='.', resolution="D", size=(30, 23), fontsize=14):
-    sns.set(font_scale=1.3)
-    val_ix = [ytest_true.index[0], ytest_true.index[-1]]
-    start = df_data.index[0] if start is None else start
-    end = df_data.index[-1] if end is None else end
-
-    df_data = df_data.loc[start:end, :]
-
-    if residual:
-        n = 2
-        df_data.loc[:, 'RESIDUAL'] = df_data.loc[:, 'REF'] - df_data.loc[:, 'Model']
-        # c = [['REF', 'Model'], ['RESIDUAL']]  # D.columns
-        leg = [['Reference', 'Model'], ['Residual']]
-        ax_idx = 1
-    else:
-        n = 1
-        # c = [['REF', 'Model']]  # D.columns
-        leg = [['Reference', 'Model']]
-        ax_idx = 0
-
-    a = mse(ytrain_true.values, ytrain_model)
-    b = mse(ytest_true.values, ytest_model)
-    xticks = pd.date_range(df_data.index[0], df_data.index[len(df_data) - 1], freq=resolution, normalize=False)
-
-    text_rmse_train = r'$MSD_{TRAIN}: %.4f $' % (a,)
-    text_rmse_test = r'$MSD_{TEST}: %.4f $' % (b,)
-    props = dict(boxstyle='round', alpha=0.5)
-    colors = plt.cm.get_cmap('Set2')(np.linspace(0, 1, 3))
-    colors2 = plt.cm.get_cmap('Set2')
-
-    with plt.style.context('seaborn-whitegrid'):
-        fig, ax = plt.subplots(nrows=n, sharex=True, figsize=size, squeeze=False)
-        ax[0, 0] = df_data.loc[:, ['REF', 'Model']].plot(ax=ax[0, 0], style=style, cmap=colors2, grid=True, xticks=xticks.to_list(), rot=0, ms=3)
-        ax[0, 0].lines[0].set_color('r')
-        ax[0, 0].lines[1].set_color('b')
-        ax[0, 0].legend(leg[0], markerscale=5, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
-        ax[0, 0].set_xlabel('')
-        ax[0, 0].set_ylabel('$CH_{4}$ [ppm]', fontdict={'size': fontsize})
-        ax[0, 0].axvspan(val_ix[0], val_ix[1], facecolor='blue', alpha=0.15)
-
-        if residual:
-            ax[1, 0] = df_data.loc[:, ['RESIDUAL']].plot(ax=ax[1, 0], style=style, cmap=colors2, grid=True, xticks=xticks.to_list(), rot=0, ms=3)
-            ax[1, 0].lines[0].set_color(colors[2])
-            ax[1, 0].legend(leg[1], markerscale=5, loc='center left', bbox_to_anchor=(1, 0.5), prop={'size': fontsize})
-            ax[1, 0].set_xlabel('Date')
-            ax[1, 0].set_ylabel('Residual [ppm]', fontdict={'size': fontsize})
-            ax[1, 0].axvspan(val_ix[0], val_ix[1], facecolor='blue', alpha=0.15)
-
-        if "D" in resolution:
-            ax[ax_idx, 0].set_xticklabels(xticks.strftime('%b-%d').tolist(), horizontalalignment='center', fontsize=fontsize)
-        else:
-            ax[ax_idx, 0].set_xticklabels(xticks.strftime('%b-%d %H:%M').tolist(), horizontalalignment='center', fontsize=fontsize)
-
-        ax[0, 0].text(0.01, 0.98, text_rmse_train, transform=ax[0, 0].transAxes, fontsize=15, verticalalignment='top', bbox=props)
-        ax[0, 0].text(0.30, 0.98, text_rmse_test, transform=ax[0, 0].transAxes, fontsize=15, verticalalignment='top', bbox=props)
-    fig.align_ylabels(ax[:])
-
-    if residual:
-        # for k, a in enumerate(ax):
-        ax[0, 0].text(-0.1, 1.1, string.ascii_uppercase[0], transform=ax[0, 0].transAxes, size=16, weight='bold')
-        ax[1, 0].text(-0.1, 1.1, string.ascii_uppercase[1], transform=ax[1, 0].transAxes, size=16, weight='bold')

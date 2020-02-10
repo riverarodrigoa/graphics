@@ -248,12 +248,12 @@ def plot_ts_residuals4(df_data, ytrain_true, ytrain_model, ytest_true, ytest_mod
         df_data.loc[:, 'RESIDUAL'] = df_data.loc[:, 'REF'] - df_data.loc[:, 'Model']
         # c = [['REF', 'Model'], ['RESIDUAL']]  # D.columns
         leg = [['Reference', 'Model'], ['Residual']]
-        ax_idx = 1
+        # ax_idx = 1
     else:
         n = 1
         # c = [['REF', 'Model']]  # D.columns
         leg = [['Reference', 'Model']]
-        ax_idx = 0
+        # ax_idx = 0
 
     a = mse(ytrain_true.values, ytrain_model)
     b = mse(ytest_true.values, ytest_model)

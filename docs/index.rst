@@ -1,9 +1,9 @@
 Welcome to Graphics's documentation!
 ======================================
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+.. .. toctree::
+..    :maxdepth: 2
+..    :caption: Contents:
 
    readme
    installation
@@ -15,6 +15,6 @@ Welcome to Graphics's documentation!
 
 Indices and tables
 ==================
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. * :ref:`genindex`
+.. * :ref:`modindex`
+.. * :ref:`search`

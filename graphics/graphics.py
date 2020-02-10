@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 # import matplotlib.ticker as ticker
+
 import matplotlib.dates as mdates
 import seaborn as sns
 # from netCDF4 import Dataset
@@ -106,6 +107,7 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
             ax[i, 0].yaxis.set_tick_params(labelsize=fontsize)
             ax[i, 0].xaxis.set_tick_params(labelsize=fontsize)
             # ax[i, 0].yaxis.set_minor_locator(ticker.AutoMinorLocator())
+
             # ax[i, 0].xaxis.set_minor_locator(ticker.AutoMinorLocator())
             locator = mdates.AutoDateLocator(minticks=7, maxticks=10)
             formatter = mdates.ConciseDateFormatter(locator)
@@ -346,6 +348,7 @@ def plot_ts_residuals3(df_data, ytrain_true, ytrain_model, ytest_true, ytest_mod
         # c = [['REF', 'Model']]  # D.columns
         leg = [['Reference', 'Model']]
         # ax_idx = 0
+
 
     a = mse(ytrain_true.values, ytrain_model)
     b = mse(ytest_true.values, ytest_model)

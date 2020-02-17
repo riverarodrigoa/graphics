@@ -1,37 +1,7 @@
-from time import time
-import os
-import glob
-import string
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-from itertools import product
-
-#sci py
-from scipy.signal import savgol_filter
-from scipy.signal import medfilt
-
-# scikit learn
-from sklearn.model_selection import train_test_split, cross_validate
-from sklearn.preprocessing import QuantileTransformer, MinMaxScaler, RobustScaler
-from sklearn.pipeline import make_pipeline
 from sklearn.metrics import mean_squared_error as mse
-from sklearn.metrics import make_scorer
-from sklearn.inspection import partial_dependence
-from sklearn.inspection import plot_partial_dependence
-from sklearn.experimental import enable_hist_gradient_boosting  # noqa
-from sklearn.ensemble import HistGradientBoostingRegressor
-from sklearn.neural_network import MLPRegressor
-from sklearn.model_selection import GridSearchCV
-from joblib import parallel_backend
 from sklearn import linear_model
-from scipy import stats, linalg
-
-#User packages
-from graphics.graphics import plot_comp_all_vars, plot_ts_residuals3
-from src.data.read_process_data import Dataset
 from scipy import stats
 
 
@@ -51,12 +21,12 @@ def calculate_partial_correlation(input_df):
         P[i, j] contains the partial correlation of input_df[:, i] and input_df[:, j]
         controlling for all other remaining variables.
     """
-    partial_corr_matrix = np.zeros((input_df.shape[1], input_df.shape[1]));
+    partial_corr_matrix = np.zeros((input_df.shape[1], input_df.shape[1]))
     for i, column1 in enumerate(input_df):
         for j, column2 in enumerate(input_df):
-            control_variables = np.delete(np.arange(input_df.shape[1]), [i, j]);
-            if i==j:
-                partial_corr_matrix[i, j] = 1;
+            control_variables = np.delete(np.arange(input_df.shape[1]), [i, j])
+            if i == j:
+                partial_corr_matrix[i, j] = 1
                 continue
             data_control_variable = input_df.iloc[:, control_variables]
             data_column1 = input_df[column1].values
@@ -67,8 +37,8 @@ def calculate_partial_correlation(input_df):
             fit2.fit(data_control_variable, data_column2)
             residual1 = data_column1 - (np.dot(data_control_variable, fit1.coef_) + fit1.intercept_)
             residual2 = data_column2 - (np.dot(data_control_variable, fit2.coef_) + fit2.intercept_)
-            partial_corr_matrix[i,j] = stats.spearmanr(residual1, residual2)[0] #pearsonr
-    return pd.DataFrame(partial_corr_matrix, columns = input_df.columns, index = input_df.columns)
+            partial_corr_matrix[i, j] = stats.spearmanr(residual1, residual2)[0]  # pearsonr
+    return pd.DataFrame(partial_corr_matrix, columns=input_df.columns, index=input_df.columns)
 
 
 def get_period(x, ix, rate=0.3, offset=0, samples=50):

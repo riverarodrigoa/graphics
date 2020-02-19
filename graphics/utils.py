@@ -72,15 +72,15 @@ def msd_hourly(y_true, y_pred):
 def get_reconstructed_ts(data, CV_tr, CV_te, i):
     TRAIN, TEST = split_dataset(data, train_test_ratio=0.3, offset_data=0, sample=i, n_samples=50)
     yvars = ['CH4d_ppm']
-    y       = data.loc[:, yvars]
+    y = data.loc[:, yvars]
     y_train = TRAIN.loc[:, yvars]
-    y_test  = TEST.loc[:, yvars]
+    y_test = TEST.loc[:, yvars]
 
-    y_tr = pd.DataFrame(CV_tr.loc[:,str(i+1)].values, index= y_train.index, columns=[str(i+1)])
-    y_te = pd.DataFrame(CV_te.loc[:,str(i+1)].values, index= y_test.index, columns=[str(i+1)])
+    y_tr = pd.DataFrame(CV_tr.loc[:, str(i+1)].values, index= y_train.index, columns=[str(i+1)])
+    y_te = pd.DataFrame(CV_te.loc[:, str(i+1)].values, index= y_test.index, columns=[str(i+1)])
 
     y_all = y_tr.append(y_te)
-    y_all.sort_values(by='Index',inplace=True)
+    y_all.sort_values(by='Index', inplace=True)
     y_all['REF'] = y.values
     y_all.columns = ['Model', 'REF']
     return y_all, y_train, y_test, y_tr, y_te

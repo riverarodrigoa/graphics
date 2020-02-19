@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 import matplotlib.dates as mdates
 import seaborn as sns
-import string
+# import string
 from sklearn.metrics import mean_squared_error as mse
 from sklearn import linear_model
 from sklearn.metrics import r2_score as r2
@@ -408,7 +408,7 @@ def plot_response(d, xvars, yvars, xlabl, ylabl, figsize, fontsize=16, file_name
             a.remove()
 
         ax0 = fig.add_subplot(gs0[0, :])
-        ax1 = fig.add_subplot(gs0[1, :])
+        ax1 = fig.add_subplot(gs1[1, :])
 
         ax0 = d.loc[:, yvars[0]].plot(ax=ax0, style='.', grid=True, rot=0, ms=4)
         ax0.set_ylabel(ylabl[0], fontdict={'size': fontsize})

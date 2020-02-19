@@ -9,7 +9,7 @@ Graphics
 .. image:: https://img.shields.io/travis/riverarodrigoa/graphics.svg
         :target: https://travis-ci.org/riverarodrigoa/graphics
 
-.. image:: https://readthedocs.org/projects/graphics/badge/?version=latest
+.. #image:: https://readthedocs.org/projects/graphics/badge/?version=latest
         :target: https://graphics.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 

@@ -5,14 +5,18 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 import matplotlib.dates as mdates
+import matplotlib.ticker as ticker
+
 import seaborn as sns
 # import string
 from sklearn.metrics import mean_squared_error as mse
+from sklearn.metrics import make_scorer, confusion_matrix, accuracy_score, auc, roc_curve, f1_score
 from sklearn import linear_model
 from sklearn.metrics import r2_score as r2
 
 
-def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=None, ylabs=None, legend_labs=None,
+def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=None, ylabs=None,
+                       legend_labs=None, bars=None,
                        ylims=None, mask_date=None, vline=None, file_name=None, figsize=(30, 23),
                        alpha=1.0, fontsize=16, interplotspace=(None, None), comp_in_subplot=False,
                        reverse=(), k_ticks=None, style=None, grid_plot=True, marker_size=4):
@@ -32,6 +36,9 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
         keys = None
     else:
         keys = list(sec.keys())
+
+    if bars is None:
+        bars = ['']
 
     if style is None:
         style = '.'
@@ -54,23 +61,30 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
         fig, ax = plt.subplots(nrows=n, sharex=True, figsize=figsize, squeeze=False)
         colors2 = plt.cm.get_cmap(cmap)
         for i in range(0, n):
-            if i == keys: # Secondary axes
-                ax[i, 0] = d.loc[:, vars_comp[i][0]].plot(ax=ax[i, 0],
-                                                          style=style, grid=grid_plot,
-                                                          # xticks=xticks.to_list(),
-                                                          rot=0, ms=marker_size, alpha=alpha)
-                for j in range(1, len(sec[keys[0]])):
-                    ax[i, 0] = d.loc[:, vars_comp[i][j]].plot(ax=ax[i, 0],
-                                                              secondary_y=True,
-                                                              style=style, grid=grid_plot,
-                                                              # xticks=xticks.to_list(),
-                                                              rot=0, ms=marker_size, alpha=alpha)
+            if vars_comp[i][0] in bars:
+                d_line = d.loc[:, vars_comp[i]]
+                ax[i, 0] = d_line.plot(style='.', ax=ax[i, 0], ms=marker_size)
+                ax[i, 0].lines[0].set_color(colors[i])
+                for line in d_line.index:
+                    if d_line.loc[line, :].all():
+                        ax[i, 0].axvline(x=line, color=colors[i], linestyle='-', linewidth=3)
             else:
-                ax[i, 0] = d.loc[:, vars_comp[i]].plot(ax=ax[i, 0],
-                                                       style=style,
-                                                       cmap=colors2, grid=grid_plot,
-                                                       # xticks=xticks.to_list(),
-                                                       rot=0, ms=marker_size, alpha=alpha)
+                if keys is not None:
+                    if vars_comp[i][0] in keys:  # Secondary axes
+                        ax[i, 0] = d.loc[:, vars_comp[i][0]].plot(ax=ax[i, 0],
+                                                                  style=style, grid=grid_plot,
+                                                                  rot=0, ms=marker_size, alpha=alpha)
+                        for j in range(1, len(sec[keys[0]])):
+                            ax[i, 0] = d.loc[:, vars_comp[i][j]].plot(ax=ax[i, 0],
+                                                                      secondary_y=True,
+                                                                      style=style, grid=grid_plot,
+                                                                      rot=0, ms=marker_size, alpha=alpha)
+                else:
+                    ax[i, 0] = d.loc[:, vars_comp[i]].plot(ax=ax[i, 0],
+                                                           style=style,
+                                                           # cmap=colors2,
+                                                           grid=grid_plot,
+                                                           rot=0, ms=marker_size, alpha=alpha)
 
             if comp_in_subplot:
                 for k, color in enumerate(cmp_colors):
@@ -106,17 +120,23 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
             ax[i, 0].ticklabel_format(axis='y', style='sci', scilimits=(-2, 2), useMathText=True)
             ax[i, 0].yaxis.set_tick_params(labelsize=fontsize)
             ax[i, 0].xaxis.set_tick_params(labelsize=fontsize)
+
             locator = mdates.AutoDateLocator(minticks=7, maxticks=10)
+            #locator = mdates.WeekdayLocator(byweekday=0)
             formatter = mdates.ConciseDateFormatter(locator)
-            formatter.formats = ['%y', '%b', '%d', '%H:%M', '%H:%M', '%S.%f']
+            formatter.formats = ['%y', '%b', '%d-%b', '%H:%M', '%H:%M', '%S.%f']
             formatter.zero_formats = [''] + formatter.formats[:-1]
+            formatter.zero_formats[0] = '%d-%b'
+            formatter.zero_formats[1] = '%d-%b'
             formatter.zero_formats[2] = '%d-%b'
-            formatter.offset_formats = ['', '', '', '', '%d %b %Y', '%d %b %Y %H:%M']
+            formatter.zero_formats[3] = '%d-%b'
+            formatter.offset_formats = ['', '', '', '%d %b %Y', '%d %b %Y', '%d %b %Y %H:%M']
 
             ax[i, 0].xaxis.set_major_locator(locator)
             ax[i, 0].xaxis.set_major_formatter(formatter)
             ax[i, 0].xaxis.set_minor_locator(mdates.DayLocator())
             ax[i, 0].tick_params(which='minor', length=4, color='k')
+            ax[i, 0].tick_params(which='major', length=8, color='k', pad=10)
 
             ax[i, 0].spines['left'].set_linewidth(2)
             ax[i, 0].spines['left'].set_color('gray')
@@ -129,7 +149,7 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
 
             if vline is not None:
                 for k in vline:
-                    ax[i, 0].axvline(x=k, color='r', linestyle='--')
+                    ax[i, 0].axvline(x=k, color='r', linestyle='-')
 
             if i != n - 1:
                 ax[i, 0].set_xticklabels('')
@@ -260,7 +280,12 @@ def plot_ts_residuals3(df_data, ytrain_true, ytrain_model, ytest_true, ytest_mod
 
 
 def plot_ts_residuals4(df_data, ytrain_true, ytrain_model, ytest_true, ytest_model, start=None, end=None,
-                       style='.', size=(30, 23), fontsize=14, ms=3):
+                       style='.', size=(30, 23), fontsize=14, ms=3, file_name=None):
+    if file_name is None:
+        save = False
+    else:
+        save = True
+
     sns.set(font_scale=1.3)
     sns.set_style("ticks")
     val_ix = [ytest_true.index[0], ytest_true.index[-1]]
@@ -310,20 +335,10 @@ def plot_ts_residuals4(df_data, ytrain_true, ytrain_model, ytest_true, ytest_mod
         ax1.spines['bottom'].set_color('gray')
         locator = mdates.AutoDateLocator(minticks=7, maxticks=10)
         formatter = mdates.ConciseDateFormatter(locator)
-        formatter.formats = ['%y',  # ticks are mostly years
-                             '%b',  # ticks are mostly months
-                             '%d',  # ticks are mostly days
-                             '%H:%M',  # hrs
-                             '%H:%M',  # min
-                             '%S.%f', ]  # secs
+        formatter.formats = ['%y', '%b', '%d', '%H:%M', '%H:%M', '%S.%f', ]
         formatter.zero_formats = [''] + formatter.formats[:-1]
         formatter.zero_formats[2] = '%d-%b'
-        formatter.offset_formats = ['',
-                                    '',
-                                    '',
-                                    '',
-                                    '%b %Y',
-                                    '%d %b %Y %H:%M', ]
+        formatter.offset_formats = ['', '', '', '', '%b %Y', '%d %b %Y %H:%M', ]
 
         ax1.xaxis.set_major_locator(locator)
         ax1.xaxis.set_major_formatter(formatter)
@@ -334,8 +349,11 @@ def plot_ts_residuals4(df_data, ytrain_true, ytrain_model, ytest_true, ytest_mod
         ax1.text(0.01, 0.98, text_rmse_train, transform=ax1.transAxes, fontsize=15, verticalalignment='top', bbox=props)
         ax1.text(0.25, 0.98, text_rmse_test , transform=ax1.transAxes, fontsize=15, verticalalignment='top', bbox=props)
 
+    if save:
+        fig.savefig(file_name, bbox_inches='tight', pad_inches=0.1, dpi=200)
 
-def plot_response(d, xvars, yvars, xlabl, ylabl, figsize, fontsize=16, file_name=None):
+
+def plot_response(d, xvars, yvars, xlabl, ylabl, figsize, fontsize=16, file_name=None, latex=False):
     if file_name is None:
         save = False
     else:
@@ -410,15 +428,16 @@ def plot_response(d, xvars, yvars, xlabl, ylabl, figsize, fontsize=16, file_name
         ax0 = fig.add_subplot(gs0[0, :])
         ax1 = fig.add_subplot(gs1[1, :])
 
-        ax0 = d.loc[:, yvars[0]].plot(ax=ax0, style='.', grid=True, rot=0, ms=4)
+        ax0 = d.loc[:, yvars[0]].plot(ax=ax0, style='.', grid=True, rot=0, ms=8)
         ax0.set_ylabel(ylabl[0], fontdict={'size': fontsize})
         ax0.lines[0].set_color('r')
         ax0.legend(['Picarro CRDS'], markerscale=5, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
         ax0 = format_axs(ax0, ylabs=ylabl[0], xticks=False, reverse=False, fontsize=fontsize,
-                         locator=(3, 1))
+                         locator=None #(3, 1)
+                         )
 
         da = d.loc[:, xvars]
-        ax1 = da.plot(ax=ax1, style='.', grid=True, rot=0, ms=4)
+        ax1 = da.plot(ax=ax1, style='.', grid=True, rot=0, ms=8)
         cmp_colors = plt.cm.get_cmap('Set2')(np.linspace(0, 1, n))
 
         for k, color in enumerate(cmp_colors):
@@ -433,17 +452,18 @@ def plot_response(d, xvars, yvars, xlabl, ylabl, figsize, fontsize=16, file_name
             for j in range(0, x):
                 if count < n:
                     dd_r, m, r_2, n_r = make_reg(d, xvars[count], yvars[count])
-                    ax[i, j] = dd_r.plot(ax=ax[i, j], grid=True, style='-', x=xvars[count], y='y_pred')
-                    ax[i, j] = dd_r.plot(ax=ax[i, j], grid=True, style='.', ms=5, x=xvars[count], y=yvars[count])
-                    ax[i, j].lines[0].set_color('r')
-                    ax[i, j].lines[1].set_color('b')
-                    ax[i, j].legend(['$m$: {:3.3f}'.format(m) + '\n $\mathrm{R^{2}}$: ' + '{:1.3f}'.format(r_2) + '\n # obs: {:d}'.format(n_r)],
-                                    markerscale=3, prop={'size': fontsize}, loc='best', frameon=True, fancybox=True)
+                    ax[i, j] = dd_r.plot(ax=ax[i, j], grid=True, style='.', ms=8, x=xvars[count], y=yvars[count])
+                    ax[i, j] = dd_r.plot(ax=ax[i, j], grid=True, style='-', ms=8,  x=xvars[count], y='y_pred')
+                    ax[i, j].lines[0].set_color('b')
+                    ax[i, j].lines[1].set_color('r')
+                    ax[i, j].lines[0].set_label('')
+                    ax[i, j].lines[1].set_label('$m$: {:3.3f}'.format(m) + '\n $\mathrm{R^{2}}$: ' + '{:1.3f}'.format(r_2) + '\n # obs: {:d}'.format(n_r))
+                    ax[i, j].legend(markerscale=3, prop={'size': fontsize}, loc='best', frameon=True, fancybox=True)
                     ax[i, j].set_xlabel(xlabl[count], fontdict={'size': fontsize})
                     ax[i, j].set_ylabel(ylabl[count], fontdict={'size': fontsize})
-                    ax[i, j].yaxis.set_major_locator(plt.MultipleLocator(3))
+                    ax[i, j].yaxis.set_major_locator(plt.AutoLocator())
                     ax[i, j].xaxis.set_major_locator(plt.AutoLocator())
-                    ax[i, j].yaxis.set_minor_locator(plt.MultipleLocator(1))
+                    ax[i, j].yaxis.set_minor_locator(plt.AutoLocator())
                     ax[i, j].xaxis.set_minor_locator(plt.AutoLocator())
                     ax[i, j].spines['left'].set_linewidth(2)
                     ax[i, j].spines['left'].set_color('gray')
@@ -453,12 +473,219 @@ def plot_response(d, xvars, yvars, xlabl, ylabl, figsize, fontsize=16, file_name
                     ax[i, j].spines['right'].set_color('gray')
                     ax[i, j].spines['top'].set_linewidth(0.5)
                     ax[i, j].spines['top'].set_color('gray')
+                    if latex:
+                        print('& {:3.3f} & {:1.3f} & {:d}'.format(m, r_2, n_r))
+                    else:
+                        print('{} \t Slope: {:3.3f} \t R2: {:1.3f} \t # obs: {:d}'.format(xvars[count], m, r_2, n_r))
+
                 else:
                     ax[i, j].axis('off')
                 count += 1
 
         plt.xticks(ha='center')
         fig.align_ylabels([ax0, ax1, ax[2, 0]])
+    if save:
+        fig.savefig(file_name, bbox_inches='tight', pad_inches=0.1, dpi=200)
+
+
+def set_ax_conf(ax, leg, ylabl, fontsize=14, loc='W'):
+    if leg is not None:
+        ax.legend(leg, markerscale=5, prop={'size': fontsize})
+    ax.set_xlabel('')
+    ax.set_ylabel(ylabl, fontdict={'size': fontsize})
+    ax.spines['left'].set_linewidth(2)
+    ax.spines['left'].set_color('gray')
+    ax.spines['bottom'].set_linewidth(2)
+    ax.spines['bottom'].set_color('gray')
+    if loc is 'W':
+        locator = mdates.WeekdayLocator(byweekday=0)
+    elif loc is 'D':
+        locator = mdates.DayLocator()
+    else:
+        locator = mdates.AutoDateLocator(minticks=7, maxticks=10)
+    formatter = mdates.ConciseDateFormatter(locator)
+    formatter.formats = ['%y', '%b', '%d', '%H:%M', '%H:%M', '%S.%f', ]
+    formatter.zero_formats[2] = '%d-%b'
+    formatter.offset_formats = ['', '%y', '%b %Y', '%d %b %Y', '%d %b %Y', '%d %b %Y %H:%M', ]
+
+    ax.xaxis.set_major_locator(locator)
+    ax.xaxis.set_major_formatter(formatter)
+    ax.xaxis.set_major_locator(locator)
+    ax.xaxis.set_major_formatter(formatter)
+    ax.xaxis.set_minor_locator(mdates.DayLocator())
+    ax.tick_params(which='minor', length=4, color='k')
+    return ax
+
+
+def plot_model_results(data_train, data_test, dates_sample=None, style='.', loc='W', file_name=None):
+
+    if file_name is None:
+        save = False
+    else:
+        save = True
+
+    if dates_sample is not None:
+        if 'train' in list(dates_sample.keys()):
+            tr_start, tr_end = dates_sample['train']
+            d0 = data_train.loc[tr_start:tr_end, :]
+        else:
+            d0 = data_train
+        if 'test' in list(dates_sample.keys()):
+            te_start, te_end = dates_sample['test']
+            d1 = data_test.loc[te_start:te_end, :]
+        else:
+            d1 = data_test
+    else:
+        d0 = data_train
+        d1 = data_test
+
+    a = msd_hourly(data_train.loc[:, 'Reference'].values, data_train.loc[:, 'Model'].values)
+    b = msd_hourly(data_test.loc[:, 'Reference'].values, data_test.loc[:, 'Model'].values)
+
+    msd_train = '$\mathrm{MSD_{TRAIN}}$: ' + '{:4f}'.format(a)
+    msd_test = '$\mathrm{MSD_{TEST }}$: ' + '{:4f}'.format(b)
+    props = dict(boxstyle='round', alpha=0.5)
+
+    with plt.style.context('seaborn-whitegrid'):
+        fig, ax = plt.subplots(nrows=2, ncols=2, sharex=False, sharey=False, figsize=(20, 8), squeeze=False)
+        gs0 = ax[0, 0].get_gridspec()
+        gs1 = ax[1, 0].get_gridspec()
+        for a in ax[:, 0]:
+            a.remove()
+
+        for a in ax[:, 1]:
+            a.remove()
+
+        ax0 = fig.add_subplot(gs0[0, :])
+        ax1 = fig.add_subplot(gs1[1, :])
+        ax0 = d0.plot(ax=ax0, style=style, grid=True, rot=0, ms=5, legend=False)
+        ax1 = d1.plot(ax=ax1, style=style, grid=True, rot=0, ms=5, legend=False)
+        # ax[0, 2] = data_train.plot.density(ax=ax[0, 2], legend=False)
+        # ax[1, 2] = data_test.plot.density(ax=ax[1, 2], legend=False)
+
+        ax0.lines[0].set_color('r')
+        ax0.lines[1].set_color('b')
+        ax1.lines[0].set_color('r')
+        ax1.lines[1].set_color('b')
+
+        #ax[0, 2].lines[0].set_color('r')
+        #ax[0, 2].lines[1].set_color('b')
+        #ax[1, 2].lines[0].set_color('r')
+        #ax[1, 2].lines[1].set_color('b')
+
+        ax0 = set_ax_conf(ax0, leg=None, ylabl="$\mathrm{CH_{4}}$ [ppm]", fontsize=14, loc=loc)
+        ax1 = set_ax_conf(ax1, leg=None, ylabl="$\mathrm{CH_{4}}$ [ppm]", fontsize=14, loc=loc)
+
+        ax0.text(0.01, 0.98, msd_train, transform=ax0.transAxes, fontsize=15, verticalalignment='top', bbox=props)
+        ax1.text(0.01, 0.98, msd_test, transform=ax1.transAxes, fontsize=15, verticalalignment='top', bbox=props)
+
+        handles, labels = ax0.get_legend_handles_labels()
+        fig.legend(handles, ['Reference', 'Model'], loc='lower center', ncol=2, fontsize=14, markerscale=2.0)
+        plt.xticks(ha='center')
+        plt.subplots_adjust(left=None, bottom=0.15, right=None, top=None, wspace=0.2, hspace=0.2)
+
+    if save:
+        fig.savefig(file_name, bbox_inches='tight', pad_inches=0.1, dpi=200)
+
+
+def plot_class_results(data, x_train, x_test, y_train, y_test, y_pred, xvar, yvar,
+                       xlabel='$\mathrm{Resistance_{TGS\ 2611-C00}}$ [$\mathrm{K\Omega}$]',
+                       ylabel='$\mathrm{CH_{4}}$ [ppm]', file_name=None):
+    if file_name is None:
+        save = False
+    else:
+        save = True
+    variables = xvar + yvar
+    yy_pred = pd.DataFrame(y_pred, index=y_test.index, columns=['Binary'])
+    with plt.style.context('seaborn-whitegrid'):
+        fig, ax = plt.subplots(nrows=2, ncols=3, sharex=False, sharey=False, figsize=(20, 15), squeeze=False)
+        gs0 = ax[0, 0].get_gridspec()
+        for a in ax[0, :-1]:
+            a.remove()
+        ax0 = fig.add_subplot(gs0[0, :-1])
+
+        A1 = yy_pred[(yy_pred[y_test == 0].dropna()) == 0].dropna()
+        B1 = yy_pred[(yy_pred[y_test == 1].dropna()) == 1].dropna()
+        C1 = pd.concat([A1, B1])
+        A2 = yy_pred[(yy_pred[y_test == 0].dropna()) == 1].dropna()
+        B2 = yy_pred[(yy_pred[y_test == 1].dropna()) == 0].dropna()
+        C2 = pd.concat([A2, B2])
+        class_0 = data.loc[C1.index, variables]
+        class_1 = data.loc[C2.index, variables]
+        ax0 = class_0.plot(x=xvar[0], y=yvar[0], style='.', ax=ax0)
+        ax0 = class_1.plot(x=xvar[0], y=yvar[0], style='.', ax=ax0)
+        ax0.lines[0].set_color('b')
+        ax0.lines[1].set_color('r')
+        ax0.ticklabel_format(axis='y', style='sci', scilimits=(-2, 2), useMathText=True)
+        ax0.ticklabel_format(axis='x', style='sci', scilimits=(-2, 2), useMathText=True)
+        ax0.set_ylabel(ylabel)
+        ax0.set_xlabel(xlabel)
+        ticks_x = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x / 1000))
+        ax0.xaxis.set_major_formatter(ticks_x)
+        ax0.spines['left'].set_linewidth(2)
+        ax0.spines['left'].set_color('gray')
+        ax0.spines['bottom'].set_linewidth(2)
+        ax0.spines['bottom'].set_color('gray')
+        ax0.legend(['Good classification', 'Bad classification'], fontsize=14, frameon=True, fancybox=True, markerscale=2.0)
+
+        fpr, tpr, thresholds = roc_curve(y_test, y_pred)
+        roc_auc = auc(fpr, tpr)
+        f1 = f1_score(y_test, y_pred)
+        ax[0, 2].plot(fpr, tpr, color='r', lw=2, label='ROC curve\narea = {:2f}\nF1-score: {:2f}'.format(roc_auc, f1))
+        ax[0, 2].plot([0, 1], [0, 1], color='b', lw=2, linestyle='--')
+        ax[0, 2].set_xlim([-0.01, 1.0])
+        ax[0, 2].set_ylim([0.0, 1.05])
+        ax[0, 2].set_xlabel('False Positive Rate', fontdict={'size': '14'})
+        ax[0, 2].set_ylabel('True Positive Rate', fontdict={'size': '14'})
+        ax[0, 2].legend(loc="lower right", prop={'size': '14'}, frameon=True, fancybox=True, markerscale=2.0)
+        ax[0, 2].spines['left'].set_linewidth(2)
+        ax[0, 2].spines['left'].set_color('gray')
+        ax[0, 2].spines['bottom'].set_linewidth(2)
+        ax[0, 2].spines['bottom'].set_color('gray')
+
+        ax[1, 0] = data.loc[y_train[y_train == 0].dropna().index, variables].plot(x=xvar[0], y=yvar[0], style='.', ax=ax[1, 0])
+        ax[1, 0] = data.loc[y_train[y_train == 1].dropna().index, variables].plot(x=xvar[0], y=yvar[0], style='.', ax=ax[1, 0], alpha=0.5)
+        ax[1, 0] = data.loc[y_test[y_test == 0].dropna().index, variables].plot(x=xvar[0], y=yvar[0], style='.', ax=ax[1, 0])
+        ax[1, 0] = data.loc[y_test[y_test == 1].dropna().index, variables].plot(x=xvar[0], y=yvar[0], style='.', ax=ax[1, 0], alpha=0.5)
+        ax[1, 0].set_ylabel(ylabel)
+        ax[1, 0].set_xlabel(xlabel)
+        ax[1, 0].lines[0].set_color('b')
+        ax[1, 0].lines[1].set_color('green')
+        ax[1, 0].lines[2].set_color('r')
+        ax[1, 0].lines[3].set_color('gray')
+        ax[1, 0].legend(['True Non Spike labels (Train)',
+                         'True Spike labels (Train) ',
+                         'True Non Spike labels (Test)',
+                         'True Spike labels (Test) '], fontsize=14, frameon=True, fancybox=True, markerscale=2.0)
+        ax[1, 0].xaxis.set_major_formatter(ticks_x)
+        ax[1, 0].spines['left'].set_linewidth(2)
+        ax[1, 0].spines['left'].set_color('gray')
+        ax[1, 0].spines['bottom'].set_linewidth(2)
+        ax[1, 0].spines['bottom'].set_color('gray')
+
+        ax[1, 1] = x_train.loc[:, xvar[0]].plot.density(ax=ax[1, 1])
+        ax[1, 1] = x_test.loc[: , xvar[0]].plot.density(ax=ax[1, 1])
+        ax[1, 1].lines[0].set_color('r')
+        ax[1, 1].lines[1].set_color('b')
+        ax[1, 1].ticklabel_format(axis='y', style='sci', scilimits=(-2, 2), useMathText=True)
+        ax[1, 1].ticklabel_format(axis='x', style='sci', scilimits=(-2, 2), useMathText=True)
+        ax[1, 1].set_xlabel(xlabel)
+        ax[1, 1].xaxis.set_major_formatter(ticks_x)
+        ax[1, 1].spines['left'].set_linewidth(2)
+        ax[1, 1].spines['left'].set_color('gray')
+        ax[1, 1].spines['bottom'].set_linewidth(2)
+        ax[1, 1].spines['bottom'].set_color('gray')
+        ax[1, 1].legend(['Train set', 'Test set'], fontsize=14, frameon=True, fancybox=True)
+
+        CF = pd.DataFrame(confusion_matrix(y_test, y_pred), columns=['No spike', 'Spike'])
+        CF.index = ['No spike', 'Spike']
+        sns.set(font_scale=1.5)
+        ax[1, 2] = sns.heatmap(CF, cmap='Accent', annot=True, center=0, square=True, ax=ax[1, 2], fmt='d', annot_kws={"size": 14}, cbar=None, robust=True)
+        ax[1, 2].set_xticklabels(ax[1, 2].get_xmajorticklabels(), fontsize=16)
+        ax[1, 2].set_yticklabels(ax[1, 2].get_ymajorticklabels(), fontsize=16)
+
+        plt.subplots_adjust(left=None, bottom=0.15, right=None, top=None, wspace=0.2, hspace=0.2)
+
     if save:
         fig.savefig(file_name, bbox_inches='tight', pad_inches=0.1, dpi=200)
 

@@ -88,3 +88,21 @@ def get_reconstructed_ts(data, CV_tr, CV_te, i):
 
 def mean_by_time(x, time_str):
     return x.groupby(pd.Grouper( freq=time_str)).mean()
+
+
+def h2o_mole_fraction(rh, t, p):
+    a1 = (rh / 100) * np.exp(13.7 - 5120 / (t + 273.15))
+    mf = 100 * (a1 / ((p / 100000) - a1))
+    return mf
+
+
+def data_over_percentile(d, col_name='CH4_dry', percentile=0.9, labeled=False):
+    qq = d.quantile(q=percentile, axis=0)
+    if labeled:
+        d_p = d.copy()
+        d_p['Binary'] = d.loc[:, col_name] > qq.loc[col_name]
+        d_p['Binary'] = d_p['Binary'].astype(int)
+    else:
+        d_p = d[d.loc[:, col_name] > qq.loc[col_name]]
+        d_p.dropna(inplace=True)
+    return d_p

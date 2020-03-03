@@ -10,7 +10,7 @@ import matplotlib.ticker as ticker
 import seaborn as sns
 # import string
 from sklearn.metrics import mean_squared_error as mse
-from sklearn.metrics import make_scorer, confusion_matrix, accuracy_score, auc, roc_curve, f1_score
+from sklearn.metrics import confusion_matrix, auc, roc_curve, f1_score
 from sklearn import linear_model
 from sklearn.metrics import r2_score as r2
 
@@ -59,7 +59,6 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
 
     with plt.style.context('seaborn-whitegrid'):
         fig, ax = plt.subplots(nrows=n, sharex=True, figsize=figsize, squeeze=False)
-        colors2 = plt.cm.get_cmap(cmap)
         for i in range(0, n):
             if vars_comp[i][0] in bars:
                 d_line = d.loc[:, vars_comp[i]]
@@ -122,7 +121,7 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
             ax[i, 0].xaxis.set_tick_params(labelsize=fontsize)
 
             locator = mdates.AutoDateLocator(minticks=7, maxticks=10)
-            #locator = mdates.WeekdayLocator(byweekday=0)
+            # locator = mdates.WeekdayLocator(byweekday=0)
             formatter = mdates.ConciseDateFormatter(locator)
             formatter.formats = ['%y', '%b', '%d-%b', '%H:%M', '%H:%M', '%S.%f']
             formatter.zero_formats = [''] + formatter.formats[:-1]
@@ -568,18 +567,13 @@ def plot_model_results(data_train, data_test, dates_sample=None, style='.', loc=
         ax1.lines[0].set_color('r')
         ax1.lines[1].set_color('b')
 
-        #ax[0, 2].lines[0].set_color('r')
-        #ax[0, 2].lines[1].set_color('b')
-        #ax[1, 2].lines[0].set_color('r')
-        #ax[1, 2].lines[1].set_color('b')
-
         ax0 = set_ax_conf(ax0, leg=None, ylabl="$\mathrm{CH_{4}}$ [ppm]", fontsize=14, loc=loc)
         ax1 = set_ax_conf(ax1, leg=None, ylabl="$\mathrm{CH_{4}}$ [ppm]", fontsize=14, loc=loc)
 
         ax0.text(0.01, 0.98, msd_train, transform=ax0.transAxes, fontsize=15, verticalalignment='top', bbox=props)
         ax1.text(0.01, 0.98, msd_test, transform=ax1.transAxes, fontsize=15, verticalalignment='top', bbox=props)
 
-        handles, labels = ax0.get_legend_handles_labels()
+        handles, _ = ax0.get_legend_handles_labels()
         fig.legend(handles, ['Reference', 'Model'], loc='lower center', ncol=2, fontsize=14, markerscale=2.0)
         plt.xticks(ha='center')
         plt.subplots_adjust(left=None, bottom=0.15, right=None, top=None, wspace=0.2, hspace=0.2)
@@ -628,7 +622,7 @@ def plot_class_results(data, x_train, x_test, y_train, y_test, y_pred, xvar, yva
         ax0.spines['bottom'].set_color('gray')
         ax0.legend(['Good classification', 'Bad classification'], fontsize=14, frameon=True, fancybox=True, markerscale=2.0)
 
-        fpr, tpr, thresholds = roc_curve(y_test, y_pred)
+        fpr, tpr, _ = roc_curve(y_test, y_pred)
         roc_auc = auc(fpr, tpr)
         f1 = f1_score(y_test, y_pred)
         ax[0, 2].plot(fpr, tpr, color='r', lw=2, label='ROC curve\narea = {:2f}\nF1-score: {:2f}'.format(roc_auc, f1))

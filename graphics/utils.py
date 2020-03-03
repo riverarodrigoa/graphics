@@ -69,15 +69,15 @@ def msd_hourly(y_true, y_pred):
     return error
 
 
-def get_reconstructed_ts(data, CV_tr, CV_te, i):
-    TRAIN, TEST = split_dataset(data, train_test_ratio=0.3, offset_data=0, sample=i, n_samples=50)
+def get_reconstructed_ts(data, cv_tr, cv_te, i):
+    train, test = split_dataset(data, train_test_ratio=0.3, offset_data=0, sample=i, n_samples=50)
     yvars = ['CH4d_ppm']
     y = data.loc[:, yvars]
-    y_train = TRAIN.loc[:, yvars]
-    y_test = TEST.loc[:, yvars]
+    y_train = train.loc[:, yvars]
+    y_test = test.loc[:, yvars]
 
-    y_tr = pd.DataFrame(CV_tr.loc[:, str(i+1)].values, index= y_train.index, columns=[str(i+1)])
-    y_te = pd.DataFrame(CV_te.loc[:, str(i+1)].values, index= y_test.index, columns=[str(i+1)])
+    y_tr = pd.DataFrame(cv_tr.loc[:, str(i+1)].values, index=y_train.index, columns=[str(i+1)])
+    y_te = pd.DataFrame(cv_te.loc[:, str(i+1)].values, index=y_test.index, columns=[str(i+1)])
 
     y_all = y_tr.append(y_te)
     y_all.sort_values(by='Index', inplace=True)
@@ -106,3 +106,7 @@ def data_over_percentile(d, col_name='CH4_dry', percentile=0.9, labeled=False):
         d_p = d[d.loc[:, col_name] > qq.loc[col_name]]
         d_p.dropna(inplace=True)
     return d_p
+
+# def detect_spikes():
+#
+#    return None

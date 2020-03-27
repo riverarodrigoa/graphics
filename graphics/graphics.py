@@ -15,11 +15,83 @@ from sklearn import linear_model
 from sklearn.metrics import r2_score as r2
 
 
+def _initialise(self):
+    # AUTHOR: Ford Cropley
+    #
+    # set default style for all plots
+    # print(plt.style.available)
+    plt.style.use('seaborn-whitegrid')                                 #  <<<<< CHOOSE A STYLE TO OVERWRITE if desired #######
+
+    # NB ALL other sizes scale with DPI - if double DPI, then labels appear twice as big.
+    #    - try to keep the DPI constant
+    # override some settings
+    DPI = 300
+    SMALL_FIGSIZE = (10, 7)
+    FIGSIZE = (20, 14)
+    TEXT_COLOUR = "black"
+    TEXT_WEIGHT = "normal"
+    TICK_LBL_SIZE = 16
+    AXIS_LBL_SIZE = TICK_LBL_SIZE + 2
+    TITLE_LBL_SIZE = TICK_LBL_SIZE + 4
+    updates = {  # remove black rings round edge of markers
+        "lines.markeredgecolor": "white",
+        "lines.markeredgewidth": 1,
+        "lines.linewidth": 1,  # line width in points
+        # axes
+        "axes.linewidth": 1,  # edge linewidth
+        "axes.grid": True,  # display grid or not
+        "axes.grid.axis": "both",  # which axis the grid should apply to
+        "axes.titlesize": AXIS_LBL_SIZE,  # fontsize of the axes title
+        "axes.titleweight": TEXT_WEIGHT,  # font weight of title
+        "axes.labelsize": AXIS_LBL_SIZE,  # fontsize of the x any y labels
+        "axes.labelweight": TEXT_WEIGHT,  # weight of the x and y labels
+        "axes.labelcolor": TEXT_COLOUR,
+        # x axis labels
+        "xtick.major.size": 3.5,  # major tick size in points
+        "xtick.minor.size": 2,  # minor tick size in points
+        "xtick.major.width": 0.8,  # major tick width in points
+        "xtick.minor.width": 0.6,  # minor tick width in points
+        "xtick.color": TEXT_COLOUR,  # color of the tick labels
+        "xtick.labelsize": TICK_LBL_SIZE,  # fontsize of the tick labels
+        # y axis labels
+        "ytick.major.size": 3.5,
+        "ytick.minor.size": 2,
+        "ytick.major.width": 0.8,
+        "ytick.minor.width": 0.6,
+        "ytick.color": TEXT_COLOUR,
+        "ytick.labelsize": TICK_LBL_SIZE,
+        # grid
+        "grid.color": "0b0b0b",  # grid color
+        "grid.linestyle": "--",  # solid
+        "grid.linewidth": 1.0,  # in points
+        "grid.alpha": 0.5,  # transparency, between 0.0 and 1.0
+        # legend
+        "legend.fontsize": TICK_LBL_SIZE,
+        "legend.frameon": True,  # if True, draw the legend on a background patch
+        "legend.edgecolor": "0b0b0b",  # background patch boundary color
+        "legend.fancybox": True,  # if True, put rounded box around the legend, else rectangle
+        "legend.numpoints": 3,  # the number of marker points in the legend line
+        "legend.scatterpoints": 3,  # number of scatter points
+        "legend.markerscale": 1.5,  # relative size of legend markers vs. original
+        # font family
+        'font.family': ['Arial'],
+        # figure
+        "figure.titlesize": TITLE_LBL_SIZE,  # size of the figure title (Figure.suptitle())
+        "figure.titleweight": TEXT_WEIGHT,  # weight of the figure title
+        "figure.dpi": DPI,  # figure dots per inch
+        "figure.figsize": SMALL_FIGSIZE}
+    plt.rcParams.update(updates)
+    # LATEX
+    # - only turn on for smart graphs - too much trouble for general use (eg saving PNG files)
+    if self.LATEX_ENABLED:
+        plt.rcParams.update({"text.usetex": True})  # use inline math for ticks
+
+
 def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=None, ylabs=None,
                        legend_labs=None, bars=None,
                        ylims=None, mask_date=None, vline=None, file_name=None, figsize=(30, 23),
                        alpha=1.0, fontsize=16, interplotspace=(None, None), comp_in_subplot=False,
-                       reverse=(), k_ticks=None, style=None, grid_plot=True, marker_size=4):
+                       reverse=(), k_ticks=None, style=None, grid_plot=True, marker_size=4, date_format=None):
     sns.set(font_scale=1.3)
     sns.set_style("ticks")
     if start is None:
@@ -39,9 +111,15 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
 
     if bars is None:
         bars = ['']
+    else:
+        bars_dict = bars
+        bars = list(bars_dict.keys())
 
     if style is None:
         style = '.'
+
+    if date_format is None:
+        date_format = 'W'
 
     da = da.loc[start:end, :]
     d = da.copy()
@@ -61,12 +139,15 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
         fig, ax = plt.subplots(nrows=n, sharex=True, figsize=figsize, squeeze=False)
         for i in range(0, n):
             if vars_comp[i][0] in bars:
-                d_line = d.loc[:, vars_comp[i]]
-                ax[i, 0] = d_line.plot(style='.', ax=ax[i, 0], ms=marker_size)
-                ax[i, 0].lines[0].set_color(colors[i])
-                for line in d_line.index:
-                    if d_line.loc[line, :].all():
-                        ax[i, 0].axvline(x=line, color=colors[i], linestyle='-', linewidth=3)
+                ax[i, 0] = d.loc[:, vars_comp[i]].plot(ax=ax[i, 0],
+                                                       style=style,
+                                                       grid=grid_plot,
+                                                       rot=0, ms=marker_size, alpha=alpha)
+                binary_ix = bars_dict[vars_comp[i][0]]
+                d_line = d.loc[:, binary_ix]
+                d_bin = d[d.loc[:, binary_ix] == 1].dropna(how='all')
+                dd_bin = d.loc[d_bin.index, vars_comp[i]]
+                ax[i, 0] = dd_bin.plot(style='x', ax=ax[i, 0], ms=marker_size)
             else:
                 if keys is not None:
                     if vars_comp[i][0] in keys:  # Secondary axes
@@ -81,13 +162,19 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
                 else:
                     ax[i, 0] = d.loc[:, vars_comp[i]].plot(ax=ax[i, 0],
                                                            style=style,
-                                                           # cmap=colors2,
                                                            grid=grid_plot,
                                                            rot=0, ms=marker_size, alpha=alpha)
 
             if comp_in_subplot:
                 for k, color in enumerate(cmp_colors):
                     ax[i, 0].lines[k].set_color(color)
+            elif vars_comp[i][0] in bars:
+                if i == 0:
+                    ax[i, 0].lines[1].set_color('b')
+                    ax[i, 0].lines[0].set_color('r')
+                else:
+                    ax[i, 0].lines[1].set_color('gray')
+                    ax[i, 0].lines[0].set_color(colors[i])
             else:
                 if i == 0:
                     ax[i, 0].lines[0].set_color('r')
@@ -96,9 +183,11 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
                         ax[i, 0].lines[0].set_color(colors[i])
 
             if legend_labs is not None:
-                ax[i, 0].legend(legend_labs[i], markerscale=5, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
+                ax[i, 0].legend(legend_labs[i], markerscale=3, prop={'size': fontsize},
+                                loc='center left', bbox_to_anchor=(1, 0.5))
             else:
-                ax[i, 0].legend(markerscale=5, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
+                ax[i, 0].legend(markerscale=3, prop={'size': fontsize},
+                                loc='center left', bbox_to_anchor=(1, 0.5))
 
             if ylims is not None:
                 if i in ylims.keys():
@@ -118,22 +207,26 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
             ax[i, 0].yaxis.set_major_locator(plt.MaxNLocator(5), )
             ax[i, 0].ticklabel_format(axis='y', style='sci', scilimits=(-2, 2), useMathText=True)
             ax[i, 0].yaxis.set_tick_params(labelsize=fontsize)
-            ax[i, 0].xaxis.set_tick_params(labelsize=fontsize)
+            ax[i, 0].xaxis.set_tick_params(labelsize=fontsize, rotation=0)
 
-            locator = mdates.AutoDateLocator(minticks=7, maxticks=10)
-            # locator = mdates.WeekdayLocator(byweekday=0)
+            if date_format is 'W':
+                locator = mdates.WeekdayLocator(byweekday=0)
+                minlocator = mdates.DayLocator()
+            elif date_format is 'D':
+                locator = mdates.DayLocator()
+                minlocator = mdates.HourLocator()
+            else:
+                locator = mdates.AutoDateLocator(minticks=7, maxticks=10)
+                minlocator = mdates.AutoDateLocator(minticks=5, maxticks=10)
             formatter = mdates.ConciseDateFormatter(locator)
             formatter.formats = ['%y', '%b', '%d-%b', '%H:%M', '%H:%M', '%S.%f']
-            formatter.zero_formats = [''] + formatter.formats[:-1]
-            formatter.zero_formats[0] = '%d-%b'
-            formatter.zero_formats[1] = '%d-%b'
-            formatter.zero_formats[2] = '%d-%b'
-            formatter.zero_formats[3] = '%d-%b'
+            formatter.zero_formats = ['', '%y', '%d-%b', '%d-%b', '%H:%M', '%H:%M']
             formatter.offset_formats = ['', '', '', '%d %b %Y', '%d %b %Y', '%d %b %Y %H:%M']
 
             ax[i, 0].xaxis.set_major_locator(locator)
             ax[i, 0].xaxis.set_major_formatter(formatter)
-            ax[i, 0].xaxis.set_minor_locator(mdates.DayLocator())
+
+            ax[i, 0].xaxis.set_minor_locator(minlocator)
             ax[i, 0].tick_params(which='minor', length=4, color='k')
             ax[i, 0].tick_params(which='major', length=8, color='k', pad=10)
 
@@ -158,7 +251,7 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
             fig.align_ylabels(ax[:, 0])
     plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=interplotspace[0], hspace=interplotspace[1])
     if save:
-        fig.savefig(file_name, bbox_inches='tight', pad_inches=0.1, dpi=200)
+        fig.savefig(file_name, bbox_inches='tight', pad_inches=0.1, dpi=300)
 
 
 def norm(x, type_norm=1, stats=None):
@@ -194,20 +287,26 @@ def save_dataset(name, df, var_names):
 
 
 def plot_ts_residuals3(df_data, ytrain_true, ytrain_model, ytest_true, ytest_model, start=None, end=None,
-                       style='.', size=(30, 23), fontsize=14, axs=None, ms=3):
+                       style='.', size=(30, 23), fontsize=14, axs=None, ms=3, date_format='W', legend=True, metric=None):
     sns.set(font_scale=1.3)
     sns.set_style("ticks")
     val_ix = [ytest_true.index[0], ytest_true.index[-1]]
     start = df_data.index[0] if start is None else start
     end = df_data.index[-1] if end is None else end
+    metric = 0 if metric is None else metric
     df_data = df_data.loc[start:end, :]
-    leg = [['Reference', 'Model']]
-
-    a = msd_hourly(ytrain_true.values, ytrain_model)
-    b = msd_hourly(ytest_true.values, ytest_model)
-
-    text_rmse_train = r'$MSD_{TRAIN}: %.3E $' % (a,)
-    text_rmse_test = r'$MSD_{TEST}: %.3E $' % (b,)
+    if legend:
+        leg = [['Reference', 'Model']]
+    if metric == 0:   # MSD
+        a = msd_hourly(ytrain_true.values, ytrain_model)
+        b = msd_hourly(ytest_true.values, ytest_model)
+        text_rmse_train = r'$\mathrm{MSD_{TRAIN}: %.3E }$' % (a,)
+        text_rmse_test = r'$\mathrm{MSD_{TEST}: %.3E }$' % (b,)
+    else:
+        a = msd_hourly(ytrain_true.values, ytrain_model)
+        b = msd_hourly(ytest_true.values, ytest_model)
+        text_rmse_train = r'$\mathrm{RMSE_{TRAIN}}$'+': {:1.5f} [ppm]'.format(np.sqrt(a))
+        text_rmse_test = r'$\mathrm{RMSE_{TEST}}$'+': {:1.5f} [ppm]'.format(np.sqrt(b))
     props = dict(boxstyle='round', alpha=0.5)
     colors = plt.cm.get_cmap('Set2')
 
@@ -235,36 +334,35 @@ def plot_ts_residuals3(df_data, ytrain_true, ytrain_model, ytest_true, ytest_mod
         ax1 = df_data.loc[:, ['REF', 'Model']].plot(ax=ax1, style=style, cmap=colors, grid=True, rot=0, ms=ms)
         ax1.lines[0].set_color('r')
         ax1.lines[1].set_color('b')
-        ax1.legend(leg[0], markerscale=5, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
+        if legend:
+            ax1.legend(leg[0], markerscale=5, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
+        else:
+            ax1.legend('')
         ax1.set_xlabel('')
         ax1.set_ylabel("$\mathrm{CH_{4}}$ [ppm]", fontdict={'size': fontsize})
         ax1.axvspan(val_ix[0], val_ix[1], facecolor='blue', alpha=0.15)
-        ax1.xaxis.set_major_locator(locator)
-        ax1.xaxis.set_major_formatter(formatter)
         ax1.spines['left'].set_linewidth(2)
         ax1.spines['left'].set_color('gray')
         ax1.spines['bottom'].set_linewidth(2)
         ax1.spines['bottom'].set_color('gray')
-        locator = mdates.AutoDateLocator(minticks=7, maxticks=10)
+
+        if date_format is 'W':
+            locator = mdates.WeekdayLocator(byweekday=0)
+        elif date_format is 'D':
+            locator = mdates.DayLocator()
+        else:
+            locator = mdates.AutoDateLocator(minticks=7, maxticks=10)
         formatter = mdates.ConciseDateFormatter(locator)
-        formatter.formats = ['%y',  # ticks are mostly years
-                             '%b',  # ticks are mostly months
-                             '%d',  # ticks are mostly days
-                             '%H:%M',  # hrs
-                             '%H:%M',  # min
-                             '%S.%f', ]  # secs
-        formatter.zero_formats = [''] + formatter.formats[:-1]
-        formatter.zero_formats[2] = '%d-%b'
-        formatter.offset_formats = ['',
-                                    '',
-                                    '',
-                                    '',
-                                    '%b %Y',
-                                    '%d %b %Y %H:%M', ]
+        formatter.formats = ['%y', '%b', '%d-%b', '%H:%M', '%H:%M', '%S.%f']
+        formatter.zero_formats = ['', '%y', '%d-%b', '%d-%b', '%H:%M', '%H:%M']
+        formatter.offset_formats = ['', '', '', '%d %b %Y', '%d %b %Y', '%d %b %Y %H:%M']
 
         ax1.xaxis.set_major_locator(locator)
         ax1.xaxis.set_major_formatter(formatter)
         ax1.xaxis.set_minor_locator(mdates.DayLocator())
+        ax1.tick_params(which='minor', length=4, color='k')
+        ax1.tick_params(which='major', length=8, color='k', pad=10)
+
         ax1.tick_params(which='minor', length=4, color='k')
         plt.xticks(ha='center')
 
@@ -349,10 +447,10 @@ def plot_ts_residuals4(df_data, ytrain_true, ytrain_model, ytest_true, ytest_mod
         ax1.text(0.25, 0.98, text_rmse_test , transform=ax1.transAxes, fontsize=15, verticalalignment='top', bbox=props)
 
     if save:
-        fig.savefig(file_name, bbox_inches='tight', pad_inches=0.1, dpi=200)
+        fig.savefig(file_name, bbox_inches='tight', pad_inches=0.1, dpi=300)
 
 
-def plot_response(d, xvars, yvars, xlabl, ylabl, figsize, fontsize=16, file_name=None, latex=False):
+def plot_response(d, xvars, yvars, xlabl, ylabl, ylablsctr, figsize, fontsize=16, file_name=None, latex=False, marker_size=8):
     if file_name is None:
         save = False
     else:
@@ -427,23 +525,23 @@ def plot_response(d, xvars, yvars, xlabl, ylabl, figsize, fontsize=16, file_name
         ax0 = fig.add_subplot(gs0[0, :])
         ax1 = fig.add_subplot(gs1[1, :])
 
-        ax0 = d.loc[:, yvars[0]].plot(ax=ax0, style='.', grid=True, rot=0, ms=8)
+        ax0 = d.loc[:, yvars[0]].plot(ax=ax0, style='.', grid=True, rot=0, ms=marker_size)
         ax0.set_ylabel(ylabl[0], fontdict={'size': fontsize})
         ax0.lines[0].set_color('r')
-        ax0.legend(['Picarro CRDS'], markerscale=5, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
-        ax0 = format_axs(ax0, ylabs=ylabl[0], xticks=False, reverse=False, fontsize=fontsize,
+        ax0.legend(['Picarro CRDS'], markerscale=3, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
+        ax0 = format_axs(ax0, ylabs=ylablsctr[0], xticks=False, reverse=False, fontsize=fontsize,
                          locator=None #(3, 1)
                          )
 
         da = d.loc[:, xvars]
-        ax1 = da.plot(ax=ax1, style='.', grid=True, rot=0, ms=8)
+        ax1 = da.plot(ax=ax1, style='.', grid=True, rot=0, ms=marker_size)
         cmp_colors = plt.cm.get_cmap('Set2')(np.linspace(0, 1, n))
 
         for k, color in enumerate(cmp_colors):
             ax1.lines[k].set_color(color)
 
-        ax1.legend(xlabl, markerscale=5, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
-        ax1 = format_axs(ax1, ylabs='Voltage [V]', xticks=True, reverse=False, fontsize=fontsize,
+        ax1.legend(xlabl, markerscale=3, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
+        ax1 = format_axs(ax1, ylabs=ylablsctr[1], xticks=True, reverse=False, fontsize=fontsize,
                          locator=None)
         count = 0
 
@@ -484,7 +582,7 @@ def plot_response(d, xvars, yvars, xlabl, ylabl, figsize, fontsize=16, file_name
         plt.xticks(ha='center')
         fig.align_ylabels([ax0, ax1, ax[2, 0]])
     if save:
-        fig.savefig(file_name, bbox_inches='tight', pad_inches=0.1, dpi=200)
+        fig.savefig(file_name, bbox_inches='tight', pad_inches=0.1, dpi=300)
 
 
 def set_ax_conf(ax, leg, ylabl, fontsize=14, loc='W'):
@@ -579,7 +677,7 @@ def plot_model_results(data_train, data_test, dates_sample=None, style='.', loc=
         plt.subplots_adjust(left=None, bottom=0.15, right=None, top=None, wspace=0.2, hspace=0.2)
 
     if save:
-        fig.savefig(file_name, bbox_inches='tight', pad_inches=0.1, dpi=200)
+        fig.savefig(file_name, bbox_inches='tight', pad_inches=0.1, dpi=300)
 
 
 def plot_class_results(data, x_train, x_test, y_train, y_test, y_pred, xvar, yvar,
@@ -681,7 +779,7 @@ def plot_class_results(data, x_train, x_test, y_train, y_test, y_pred, xvar, yva
         plt.subplots_adjust(left=None, bottom=0.15, right=None, top=None, wspace=0.2, hspace=0.2)
 
     if save:
-        fig.savefig(file_name, bbox_inches='tight', pad_inches=0.1, dpi=200)
+        fig.savefig(file_name, bbox_inches='tight', pad_inches=0.1, dpi=300)
 
 ########## OLD Functions ################
 

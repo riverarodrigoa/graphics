@@ -69,9 +69,17 @@ def msd_hourly(y_true, y_pred):
     return error
 
 
-def get_reconstructed_ts(data, cv_tr, cv_te, i):
-    train, test = split_dataset(data, train_test_ratio=0.3, offset_data=0, sample=i, n_samples=50)
-    yvars = ['CH4d_ppm']
+def change_width(ax, new_value) :
+    for patch in ax.patches :
+        current_width = patch.get_width()
+        diff = current_width - new_value
+        patch.set_width(new_value)
+        patch.set_x(patch.get_x() + diff * .5)
+
+
+def get_reconstructed_ts(data, cv_tr, cv_te, i,yvar='CH4d_ppm',ix='Index',n_samples=50):
+    train, test = split_dataset(data, train_test_ratio=0.3, offset_data=0, sample=i, n_samples=n_samples)
+    yvars = [yvar]
     y = data.loc[:, yvars]
     y_train = train.loc[:, yvars]
     y_test = test.loc[:, yvars]
@@ -80,7 +88,7 @@ def get_reconstructed_ts(data, cv_tr, cv_te, i):
     y_te = pd.DataFrame(cv_te.loc[:, str(i+1)].values, index=y_test.index, columns=[str(i+1)])
 
     y_all = y_tr.append(y_te)
-    y_all.sort_values(by='Index', inplace=True)
+    y_all.sort_values(by=ix, inplace=True)
     y_all['REF'] = y.values
     y_all.columns = ['Model', 'REF']
     return y_all, y_train, y_test, y_tr, y_te
@@ -107,6 +115,95 @@ def data_over_percentile(d, col_name='CH4_dry', percentile=0.9, labeled=False):
         d_p.dropna(inplace=True)
     return d_p
 
-# def detect_spikes():
-#
-#    return None
+
+# Detect spikes (sd over background)
+def find_spikes(x, alpha, C_unf, n):  # Detect spikes in a window
+    # n = 1
+    sigma = np.std(x)
+    # C_unf = x[0]
+    threshold = C_unf + alpha * sigma + np.sqrt(n) * sigma
+    spike = []
+    # spike.append(0)
+    for i in range(0, len(x)):
+        if x[i] >= threshold:
+            spike.append(1)
+            n += 1
+        else:
+            spike.append(0)
+            C_unf = x[i]
+            n = 0
+        threshold = C_unf + alpha * sigma + np.sqrt(n) * sigma
+    return spike, C_unf, n
+
+
+def find_spikes_onts(X, window, alpha):  # Detect spikes in a TS
+    spike = pd.DataFrame(columns=['spikes'])
+    for i in range(0, len(X), window):
+        start = i
+        end = start + window
+        x = X[start:end]
+        if i == 0:
+            C_unf = x[0]
+            n = 0
+            spike['spikes'], C_unf_last, n_last = find_spikes(x, alpha=alpha, C_unf=C_unf, n=n)
+            # print(C_unf_last, "\t", n_last)
+        else:
+            spike_t = pd.DataFrame(columns=['spikes'])
+            spike_t['spikes'], C_unf_last, n_last = find_spikes(x, alpha=alpha, C_unf=C_unf_last, n=n_last)
+            # print(C_unf_last, "\t", n_last)
+            spike = spike.append(spike_t, ignore_index=True)
+    return spike
+
+
+def detect_spikes(x, window, alpha, backwards):  # Do the detection FWD & BCKWD
+    spike_f = find_spikes_onts(x, window, alpha)
+    if backwards:
+        X_b = list(reversed(x))
+        spike_b = find_spikes_onts(X_b, window, alpha)
+        spike = pd.DataFrame(columns=['F', 'B', 'SS'])
+        spike['F'] = spike_f.loc[:, 'spikes'].values
+        spike['B'] = list(reversed(spike_b.loc[:, 'spikes'].values))
+        spike.loc[spike['F'] != spike['B'], 'SS'] = 1
+        ix = spike[spike['F'] == spike['B']].index
+        spike.loc[ix, 'SS'] = spike.loc[ix, 'F']
+    else:
+        spike = pd.DataFrame(columns=['SS'])
+        spike['SS'] = spike_f.loc[:, 'spikes'].values
+    return spike
+
+
+def spike_detection_it(data, variable, window, alpha, backwards):
+    detection = dict()
+    it = len(alpha)
+    for i in range(0, it):
+        if i == 0:
+            data_ns = data
+        else:
+            data_ns = ddata[ddata.loc[:, 'Binary'] == 0].copy()
+            del ddata, spike
+
+        X_f = data_ns.loc[:, variable].copy()
+        spike = detect_spikes(X_f, window[i], alpha[i], backwards)
+        ddata = pd.DataFrame(columns=[variable, 'Binary'])
+        ddata[variable] = data_ns.loc[:, variable]
+        ddata.iloc[:, 1] = spike.loc[:, 'SS'].values
+        detection[i] = ddata
+
+    data_f = data.copy()
+    for i in range(0, it):
+        ix = detection[i][detection[i].loc[:, 'Binary'] == 1].index
+        data_f.loc[ix, 'Binary'] = 1
+
+    return ddata, detection, data_f
+
+
+def remove_baseline(x, variable, binary_ix, interpolation_method='pad'):
+    y = pd.DataFrame(columns=['Raw','Binary','Baseline'])
+    y['Raw'] = x.loc[:,variable].copy()
+    y['Baseline'] = x.copy()
+    y['Binary'] = binary_ix
+    ix = y[y['Binary'] == 1].index
+    y.loc[ix,'Baseline'] = np.nan
+    y['Interpolation'] = y.loc[:,'Baseline'].interpolate(method=interpolation_method)
+    y['Corrected'] = y['Raw'] - y['Interpolation']
+    return y.loc[:,['Interpolation', 'Corrected']]

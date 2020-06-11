@@ -88,9 +88,9 @@ def _initialise(self):
 
 
 def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=None, ylabs=None,
-                       legend_labs=None, bars=None,
-                       ylims=None, mask_date=None, vline=None, file_name=None, figsize=(30, 23),
-                       alpha=1.0, fontsize=16, interplotspace=(None, None), comp_in_subplot=False,
+                       legend_labs=None, bars=None, cmap=None,
+                       ylims=None, mask_date=None, vline=None, vspan=None, file_name=None, figsize=(30, 23),
+                       alpha=1.0, fontsize=16, interplotspace=(None, None), comp_in_subplot=False, cmp_colors=None,
                        reverse=(), k_ticks=None, style=None, grid_plot=True, marker_size=4, date_format=None):
     sns.set(font_scale=1.3)
     sns.set_style("ticks")
@@ -128,12 +128,16 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
         for i in t_keys:
             d.loc[:, i] = d.loc[:, i] / k_ticks[i]
     dqq = d.quantile(q=qq, axis=0)
-    cmap = 'Set2'
+    if cmap is None:
+        cmap = 'Set2'
     n = len(ylabs)
     colors = plt.cm.get_cmap(cmap)(np.linspace(0, 1, n + 1))
     if comp_in_subplot:
-        c = len(max(vars_comp))
-        cmp_colors = plt.cm.get_cmap(cmap)(np.linspace(0, 1, c))
+        if cmp_colors is None:
+            c = len(max(vars_comp))
+            cmp_colors = plt.cm.get_cmap(cmap)(np.linspace(0, 1, c))
+        else:
+            pass
 
     with plt.style.context('seaborn-whitegrid'):
         fig, ax = plt.subplots(nrows=n, sharex=True, figsize=figsize, squeeze=False)
@@ -142,7 +146,7 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
                 ax[i, 0] = d.loc[:, vars_comp[i]].plot(ax=ax[i, 0],
                                                        style=style,
                                                        grid=grid_plot,
-                                                       rot=0, ms=marker_size, alpha=alpha)
+                                                       rot=0, ms=marker_size, alpha=alpha, x_compat=True)
                 binary_ix = bars_dict[vars_comp[i][0]]
                 d_line = d.loc[:, binary_ix]
                 d_bin = d[d.loc[:, binary_ix] == 1].dropna(how='all')
@@ -153,17 +157,17 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
                     if vars_comp[i][0] in keys:  # Secondary axes
                         ax[i, 0] = d.loc[:, vars_comp[i][0]].plot(ax=ax[i, 0],
                                                                   style=style, grid=grid_plot,
-                                                                  rot=0, ms=marker_size, alpha=alpha)
+                                                                  rot=0, ms=marker_size, alpha=alpha, x_compat=True)
                         for j in range(1, len(sec[keys[0]])):
                             ax[i, 0] = d.loc[:, vars_comp[i][j]].plot(ax=ax[i, 0],
                                                                       secondary_y=True,
                                                                       style=style, grid=grid_plot,
-                                                                      rot=0, ms=marker_size, alpha=alpha)
+                                                                      rot=0, ms=marker_size, alpha=alpha, x_compat=True)
                 else:
                     ax[i, 0] = d.loc[:, vars_comp[i]].plot(ax=ax[i, 0],
                                                            style=style,
                                                            grid=grid_plot,
-                                                           rot=0, ms=marker_size, alpha=alpha)
+                                                           rot=0, ms=marker_size, alpha=alpha, x_compat=True)
 
             if comp_in_subplot:
                 for k, color in enumerate(cmp_colors):
@@ -219,9 +223,9 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
                 locator = mdates.AutoDateLocator(minticks=7, maxticks=10)
                 minlocator = mdates.AutoDateLocator(minticks=5, maxticks=10)
             formatter = mdates.ConciseDateFormatter(locator)
-            formatter.formats = ['%y', '%b', '%d-%b', '%H:%M', '%H:%M', '%S.%f']
-            formatter.zero_formats = ['', '%y', '%d-%b', '%d-%b', '%H:%M', '%H:%M']
-            formatter.offset_formats = ['', '', '', '%d %b %Y', '%d %b %Y', '%d %b %Y %H:%M']
+            formatter.formats = ['%y', '%b', '%d-%b', '%H:%M:%S', '%H:%M:%S', '%S.%f']
+            formatter.zero_formats = ['', '%y', '%d-%b', '%d-%b', '%H:%M:%S', '%H:%M:%S']
+            formatter.offset_formats = ['', '', '', '%b %Y', '%d %b %Y', '%d %b %Y']
 
             ax[i, 0].xaxis.set_major_locator(locator)
             ax[i, 0].xaxis.set_major_formatter(formatter)
@@ -240,8 +244,13 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
                     ax[i, 0].invert_yaxis()
 
             if vline is not None:
-                for k in vline:
-                    ax[i, 0].axvline(x=k, color='r', linestyle='-')
+                for l, k, a in vline:
+                    if i == a:
+                        ax[i, 0].axvline(x=l, color=k, linestyle='-')
+            if vspan is not None:
+                for v, k, a in vspan:
+                    if i == a:
+                        ax[i, 0].axvspan(v[0], v[1], facecolor=k, alpha=0.15)
 
             if i != n - 1:
                 ax[i, 0].set_xticklabels('')
@@ -339,7 +348,7 @@ def plot_ts_residuals3(df_data, ytrain_true, ytrain_model, ytest_true, ytest_mod
         else:
             ax1.legend('')
         ax1.set_xlabel('')
-        ax1.set_ylabel("$\mathrm{CH_{4}}$ [ppm]", fontdict={'size': fontsize})
+        ax1.set_ylabel("$\mathrm{CH_{4}}$ (ppm)", fontdict={'size': fontsize})
         ax1.axvspan(val_ix[0], val_ix[1], facecolor='blue', alpha=0.15)
         ax1.spines['left'].set_linewidth(2)
         ax1.spines['left'].set_color('gray')
@@ -450,12 +459,13 @@ def plot_ts_residuals4(df_data, ytrain_true, ytrain_model, ytest_true, ytest_mod
         fig.savefig(file_name, bbox_inches='tight', pad_inches=0.1, dpi=300)
 
 
-def plot_response(d, xvars, yvars, xlabl, ylabl, ylablsctr, figsize, fontsize=16, file_name=None, latex=False, marker_size=8):
+def plot_response(d, xvars, yvars, xlabl, ylabl, ylablsctr, lgn_lab, figsize, fontsize=16, file_name=None, latex=False, marker_size=8):
     if file_name is None:
         save = False
     else:
         save = True
     n = len(xvars)
+    n2 = len(ylablsctr)
 
     def make_reg(ds, x_var, y_var):
         dd = ds.loc[:, [x_var] + [y_var]]
@@ -516,6 +526,7 @@ def plot_response(d, xvars, yvars, xlabl, ylabl, ylablsctr, figsize, fontsize=16
         fig, ax = plt.subplots(nrows=y+2, ncols=x, sharey=True, figsize=figsize, squeeze=False)
         gs0 = ax[0, 0].get_gridspec()
         gs1 = ax[1, 0].get_gridspec()
+
         for a in ax[0, :]:
             a.remove()
 
@@ -525,32 +536,32 @@ def plot_response(d, xvars, yvars, xlabl, ylabl, ylablsctr, figsize, fontsize=16
         ax0 = fig.add_subplot(gs0[0, :])
         ax1 = fig.add_subplot(gs1[1, :])
 
-        ax0 = d.loc[:, yvars[0]].plot(ax=ax0, style='.', grid=True, rot=0, ms=marker_size)
+        ax0 = d.loc[:, yvars[0]].plot(ax=ax0, style='.', grid=True, rot=0, ms=marker_size, x_compat=True)
         ax0.set_ylabel(ylabl[0], fontdict={'size': fontsize})
         ax0.lines[0].set_color('r')
-        ax0.legend(['Picarro CRDS'], markerscale=3, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
+        ax0.legend([lgn_lab[0]], markerscale=3, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
         ax0 = format_axs(ax0, ylabs=ylablsctr[0], xticks=False, reverse=False, fontsize=fontsize,
                          locator=None #(3, 1)
                          )
 
         da = d.loc[:, xvars]
-        ax1 = da.plot(ax=ax1, style='.', grid=True, rot=0, ms=marker_size)
+        ax1 = da.plot(ax=ax1, style='.', grid=True, rot=0, ms=marker_size, x_compat=True)
         cmp_colors = plt.cm.get_cmap('Set2')(np.linspace(0, 1, n))
 
         for k, color in enumerate(cmp_colors):
             ax1.lines[k].set_color(color)
 
-        ax1.legend(xlabl, markerscale=3, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
+        ax1.legend([lgn_lab[1]], markerscale=3, prop={'size': fontsize}, loc='center left', bbox_to_anchor=(1, 0.5))
         ax1 = format_axs(ax1, ylabs=ylablsctr[1], xticks=True, reverse=False, fontsize=fontsize,
-                         locator=None)
+                          locator=None)
         count = 0
 
-        for i in range(2, y+2):
+        for i in range(2, y+n2):
             for j in range(0, x):
                 if count < n:
                     dd_r, m, r_2, n_r = make_reg(d, xvars[count], yvars[count])
-                    ax[i, j] = dd_r.plot(ax=ax[i, j], grid=True, style='.', ms=8, x=xvars[count], y=yvars[count])
-                    ax[i, j] = dd_r.plot(ax=ax[i, j], grid=True, style='-', ms=8,  x=xvars[count], y='y_pred')
+                    ax[i, j] = dd_r.plot(ax=ax[i, j], grid=True, style='.', ms=8, x=xvars[count], y=yvars[count], x_compat=True)
+                    ax[i, j] = dd_r.plot(ax=ax[i, j], grid=True, style='-', ms=8,  x=xvars[count], y='y_pred', x_compat=True)
                     ax[i, j].lines[0].set_color('b')
                     ax[i, j].lines[1].set_color('r')
                     ax[i, j].lines[0].set_label('')
@@ -558,6 +569,8 @@ def plot_response(d, xvars, yvars, xlabl, ylabl, ylablsctr, figsize, fontsize=16
                     ax[i, j].legend(markerscale=3, prop={'size': fontsize}, loc='best', frameon=True, fancybox=True)
                     ax[i, j].set_xlabel(xlabl[count], fontdict={'size': fontsize})
                     ax[i, j].set_ylabel(ylabl[count], fontdict={'size': fontsize})
+                    ax[i, j].yaxis.set_tick_params(labelsize=fontsize)
+                    ax[i, j].xaxis.set_tick_params(labelsize=fontsize)
                     ax[i, j].yaxis.set_major_locator(plt.AutoLocator())
                     ax[i, j].xaxis.set_major_locator(plt.AutoLocator())
                     ax[i, j].yaxis.set_minor_locator(plt.AutoLocator())
@@ -601,9 +614,9 @@ def set_ax_conf(ax, leg, ylabl, fontsize=14, loc='W'):
     else:
         locator = mdates.AutoDateLocator(minticks=7, maxticks=10)
     formatter = mdates.ConciseDateFormatter(locator)
-    formatter.formats = ['%y', '%b', '%d', '%H:%M', '%H:%M', '%S.%f', ]
-    formatter.zero_formats[2] = '%d-%b'
-    formatter.offset_formats = ['', '%y', '%b %Y', '%d %b %Y', '%d %b %Y', '%d %b %Y %H:%M', ]
+    formatter.formats = ['%y', '%b', '%d-%b', '%H:%M:%S', '%H:%M:%S', '%S.%f']
+    formatter.zero_formats = ['', '%y', '%d-%b', '%d-%b', '%H:%M:%S', '%H:%M:%S']
+    formatter.offset_formats = ['', '', '', '%b %Y', '%d %b %Y', '%d %b %Y']
 
     ax.xaxis.set_major_locator(locator)
     ax.xaxis.set_major_formatter(formatter)
@@ -636,11 +649,11 @@ def plot_model_results(data_train, data_test, dates_sample=None, style='.', loc=
         d0 = data_train
         d1 = data_test
 
-    a = msd_hourly(data_train.loc[:, 'Reference'].values, data_train.loc[:, 'Model'].values)
-    b = msd_hourly(data_test.loc[:, 'Reference'].values, data_test.loc[:, 'Model'].values)
+    a = np.sqrt(mse(data_train.loc[:, 'Reference'].values, data_train.loc[:, 'Model'].values))
+    b = np.sqrt(mse(data_test.loc[:, 'Reference'].values, data_test.loc[:, 'Model'].values))
 
-    msd_train = '$\mathrm{MSD_{TRAIN}}$: ' + '{:4f}'.format(a)
-    msd_test = '$\mathrm{MSD_{TEST }}$: ' + '{:4f}'.format(b)
+    msd_train = '$\mathrm{RMSE_{TRAIN}}$: ' + '{:4f} (ppm)'.format(a)
+    msd_test = '$\mathrm{RMSE_{TEST }}$: ' + '{:4f} (ppm)'.format(b)
     props = dict(boxstyle='round', alpha=0.5)
 
     with plt.style.context('seaborn-whitegrid'):
@@ -655,8 +668,8 @@ def plot_model_results(data_train, data_test, dates_sample=None, style='.', loc=
 
         ax0 = fig.add_subplot(gs0[0, :])
         ax1 = fig.add_subplot(gs1[1, :])
-        ax0 = d0.plot(ax=ax0, style=style, grid=True, rot=0, ms=5, legend=False)
-        ax1 = d1.plot(ax=ax1, style=style, grid=True, rot=0, ms=5, legend=False)
+        ax0 = d0.plot(ax=ax0, style=style, grid=True, rot=0, ms=5, legend=False,x_compat=True)
+        ax1 = d1.plot(ax=ax1, style=style, grid=True, rot=0, ms=5, legend=False,x_compat=True)
         # ax[0, 2] = data_train.plot.density(ax=ax[0, 2], legend=False)
         # ax[1, 2] = data_test.plot.density(ax=ax[1, 2], legend=False)
 
@@ -665,8 +678,8 @@ def plot_model_results(data_train, data_test, dates_sample=None, style='.', loc=
         ax1.lines[0].set_color('r')
         ax1.lines[1].set_color('b')
 
-        ax0 = set_ax_conf(ax0, leg=None, ylabl="$\mathrm{CH_{4}}$ [ppm]", fontsize=14, loc=loc)
-        ax1 = set_ax_conf(ax1, leg=None, ylabl="$\mathrm{CH_{4}}$ [ppm]", fontsize=14, loc=loc)
+        ax0 = set_ax_conf(ax0, leg=None, ylabl="$\mathrm{CH_{4}}$ (ppm)", fontsize=14, loc=loc)
+        ax1 = set_ax_conf(ax1, leg=None, ylabl="$\mathrm{CH_{4}}$ (ppm)", fontsize=14, loc=loc)
 
         ax0.text(0.01, 0.98, msd_train, transform=ax0.transAxes, fontsize=15, verticalalignment='top', bbox=props)
         ax1.text(0.01, 0.98, msd_test, transform=ax1.transAxes, fontsize=15, verticalalignment='top', bbox=props)

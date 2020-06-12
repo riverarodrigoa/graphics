@@ -197,7 +197,7 @@ def spike_detection_it(data, variable, window, alpha, backwards):
     return ddata, detection, data_f
 
 
-def remove_baseline(x, variable, binary_ix, interpolation_method='pad'):
+def remove_baseline(x, variable, binary_ix, interpolation_method='pad', inverted=False):
     y = pd.DataFrame(columns=['Raw','Binary','Baseline'])
     y['Raw'] = x.loc[:,variable].copy()
     y['Baseline'] = x.copy()
@@ -205,5 +205,41 @@ def remove_baseline(x, variable, binary_ix, interpolation_method='pad'):
     ix = y[y['Binary'] == 1].index
     y.loc[ix,'Baseline'] = np.nan
     y['Interpolation'] = y.loc[:,'Baseline'].interpolate(method=interpolation_method)
-    y['Corrected'] = y['Raw'] - y['Interpolation']
+    if inverted:
+        y['Corrected'] = y['Interpolation'] - y['Raw']
+    else:
+        y['Corrected'] = y['Raw'] - y['Interpolation']
     return y.loc[:,['Interpolation', 'Corrected']]
+
+
+def spike_change(time_ix,spike_ix):
+    lst_change = []
+    value_old = 0.0
+    for ix, v in enumerate(spike_ix):
+        if value_old != v:
+            lst_change.append(time_ix[ix])
+        value_old = v
+    return lst_change
+
+
+def align_ts(x, start, end, var1, var2):
+    xpre = x.loc[:start, :]
+    xx = x.loc[start:end, :]
+    xaft = x.loc[end:, :]
+
+    # Correct shift
+    if xx.empty:
+        return x
+    else:
+        m1 = xx.loc[:, [var1, var2]].idxmax()
+        shift = m1[0] - m1[1]
+        if shift < pd.Timedelta(0):
+            shift = m1[1] - m1[0]
+            xx.loc[:, var2] = xx.loc[:, var2].shift(-(shift // 5).seconds)
+        else:
+            xx.loc[:, var2] = xx.loc[:, var2].shift((shift // 5).seconds)
+
+        # Reconstruct df
+        xf = xpre.append(xx)
+        xf = xf.append(xaft)
+        return xf

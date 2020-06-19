@@ -14,6 +14,10 @@ from sklearn.metrics import confusion_matrix, auc, roc_curve, f1_score
 from sklearn import linear_model
 from sklearn.metrics import r2_score as r2
 
+from sklearn.preprocessing import QuantileTransformer, MinMaxScaler, RobustScaler, PolynomialFeatures
+from sklearn.pipeline import make_pipeline
+
+
 
 def _initialise(self):
     # AUTHOR: Ford Cropley
@@ -209,7 +213,7 @@ def plot_comp_all_vars(da, vars_comp, start=None, end=None, qq=(0.0, 1.0), sec=N
             ax[i, 0].set_xlabel('')
             ax[i, 0].set_ylabel(ylabs[i], fontdict={'size': fontsize})
             ax[i, 0].yaxis.set_major_locator(plt.MaxNLocator(5), )
-            ax[i, 0].ticklabel_format(axis='y', style='sci', scilimits=(-2, 2), useMathText=True)
+            ax[i, 0].ticklabel_format(axis='y', style='sci', scilimits=(-3, 3), useMathText=True)
             ax[i, 0].yaxis.set_tick_params(labelsize=fontsize)
             ax[i, 0].xaxis.set_tick_params(labelsize=fontsize, rotation=0)
 
@@ -459,7 +463,8 @@ def plot_ts_residuals4(df_data, ytrain_true, ytrain_model, ytest_true, ytest_mod
         fig.savefig(file_name, bbox_inches='tight', pad_inches=0.1, dpi=300)
 
 
-def plot_response(d, xvars, yvars, xlabl, ylabl, ylablsctr, lgn_lab, figsize, fontsize=16, file_name=None, latex=False, marker_size=8):
+def plot_response(d, xvars, yvars, xlabl, ylabl, ylablsctr, lgn_lab, figsize, fontsize=16, file_name=None, latex=False,
+                  marker_size=8, degree=1,eq=False):
     if file_name is None:
         save = False
     else:
@@ -467,13 +472,27 @@ def plot_response(d, xvars, yvars, xlabl, ylabl, ylablsctr, lgn_lab, figsize, fo
     n = len(xvars)
     n2 = len(ylablsctr)
 
-    def make_reg(ds, x_var, y_var):
+    def make_reg(ds, x_var, y_var, deg):
         dd = ds.loc[:, [x_var] + [y_var]]
         dd.dropna(inplace=True)
-        reg = linear_model.LinearRegression()
-        reg.fit(dd.loc[:, x_var].values.reshape(len(dd), 1), dd.loc[:, y_var].values.reshape(len(dd), 1))
-        dd['y_pred'] = reg.predict(dd.loc[:, x_var].values.reshape(len(dd), 1))
-        m_slope = reg.coef_[0][0]
+        if deg > 1:
+            model = make_pipeline(RobustScaler(quantile_range=(1.0, 99.0)),
+                                  PolynomialFeatures(deg),
+                                  linear_model.LinearRegression()
+                                  )
+        else:
+            model = make_pipeline(RobustScaler(quantile_range=(1.0, 99.0)),
+                                  linear_model.LinearRegression()
+                                  )
+        model.fit(dd.loc[:, x_var].values.reshape(len(dd), 1), dd.loc[:, y_var].values.reshape(len(dd), 1))
+        # reg = linear_model.LinearRegression()
+        # reg.fit(dd.loc[:, x_var].values.reshape(len(dd), 1), dd.loc[:, y_var].values.reshape(len(dd), 1))
+        # dd['y_pred'] = reg.predict(dd.loc[:, x_var].values.reshape(len(dd), 1))
+        dd['y_pred'] = model.predict(dd.loc[:, x_var].values.reshape(len(dd), 1))
+        # if deg > 1:
+        m_slope = model.named_steps['linearregression'].coef_[0]
+        # else:
+        #    m_slope = model.named_steps['linearregression'].coef_[0][0]
         r_2_score = r2(dd.loc[:, y_var].values.reshape(len(dd), 1), dd.loc[:, 'y_pred'].values.reshape(len(dd), 1))
         num_obs = len(dd)
         return dd, m_slope, r_2_score, num_obs
@@ -559,13 +578,34 @@ def plot_response(d, xvars, yvars, xlabl, ylabl, ylablsctr, lgn_lab, figsize, fo
         for i in range(2, y+n2):
             for j in range(0, x):
                 if count < n:
-                    dd_r, m, r_2, n_r = make_reg(d, xvars[count], yvars[count])
-                    ax[i, j] = dd_r.plot(ax=ax[i, j], grid=True, style='.', ms=8, x=xvars[count], y=yvars[count], x_compat=True)
-                    ax[i, j] = dd_r.plot(ax=ax[i, j], grid=True, style='-', ms=8,  x=xvars[count], y='y_pred', x_compat=True)
+                    dd_r, m, r_2, n_r = make_reg(d, xvars[count], yvars[count], degree)
+                    ax[i, j] = dd_r.plot(ax=ax[i, j], grid=True, style='.', ms=marker_size, x=xvars[count], y=yvars[count], x_compat=True)
+                    x = dd_r.loc[:, xvars[count]].values
+                    y = dd_r.loc[:, yvars[count]].values
+                    z = np.polyfit(x, y, degree)
+                    p = np.poly1d(z)
+                    #ax[i, j].plot(x, p(x))
+                    ax[i, j] = dd_r.plot(ax=ax[i, j], grid=True, style='-', ms=marker_size,  x=xvars[count], y='y_pred', x_compat=True)
                     ax[i, j].lines[0].set_color('b')
                     ax[i, j].lines[1].set_color('r')
+                    # ax[i, j].lines[2].set_color('k')
                     ax[i, j].lines[0].set_label('')
-                    ax[i, j].lines[1].set_label('$m$: {:3.3f}'.format(m) + '\n $\mathrm{R^{2}}$: ' + '{:1.3f}'.format(r_2) + '\n # obs: {:d}'.format(n_r))
+                    # if degree > 1:
+                    c = len(m)-1
+                    mm = ''
+                    while c > 0:
+                        if c == 1:
+                            mm += str(round(m[c], 4)) + ' $x$ +'
+                        else:
+                            mm += str(round(m[c], 4)) + f' $x^{c}$ +'
+                        c -= 1
+                    mm += str(m[0])
+                    if eq:
+                        ax[i, j].lines[1].set_label(mm + '\n $\mathrm{R^{2}}$: ' + '{:1.3f}'.format(r_2) + '\n # obs: {:d}'.format(n_r))
+                    else:
+                        ax[i, j].lines[1].set_label('$\mathrm{R^{2}}$: ' + '{:1.3f}'.format(r_2) + '\n # obs: {:d}'.format(n_r))
+                    # else:
+                    #     ax[i, j].lines[1].set_label('$m$: {:3.3f}'.format(m) + '\n $\mathrm{R^{2}}$: ' + '{:1.3f}'.format(r_2) + '\n # obs: {:d}'.format(n_r))
                     ax[i, j].legend(markerscale=3, prop={'size': fontsize}, loc='best', frameon=True, fancybox=True)
                     ax[i, j].set_xlabel(xlabl[count], fontdict={'size': fontsize})
                     ax[i, j].set_ylabel(ylabl[count], fontdict={'size': fontsize})
@@ -584,9 +624,10 @@ def plot_response(d, xvars, yvars, xlabl, ylabl, ylablsctr, lgn_lab, figsize, fo
                     ax[i, j].spines['top'].set_linewidth(0.5)
                     ax[i, j].spines['top'].set_color('gray')
                     if latex:
-                        print('& {:3.3f} & {:1.3f} & {:d}'.format(m, r_2, n_r))
+                        print('& ' + mm + ' {:1.3f} & {:d}'.format(r_2, n_r))
+                        #print('& {:3.3f} & {:1.3f} & {:d}'.format(m, r_2, n_r))
                     else:
-                        print('{} \t Slope: {:3.3f} \t R2: {:1.3f} \t # obs: {:d}'.format(xvars[count], m, r_2, n_r))
+                        print('{} \t Slope: {} \t R2: {:1.3f} \t # obs: {:d}'.format(xvars[count], mm, r_2, n_r))
 
                 else:
                     ax[i, j].axis('off')

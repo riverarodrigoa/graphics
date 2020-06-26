@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.metrics import mean_squared_error as mse
 from sklearn import linear_model
 from scipy import stats
+from scipy.signal import find_peaks
 
 
 def calculate_partial_correlation(input_df):
@@ -197,14 +198,43 @@ def spike_detection_it(data, variable, window, alpha, backwards):
     return ddata, detection, data_f
 
 
+def find_peaks_it(df, variable, it, prom, window=100, baseline=True):
+    dfs = pd.DataFrame(df.loc[:,variable])
+    dfs['Binary'] = [False]*len(dfs)
+    for i in range(0,it):
+        dd = dfs[dfs.loc[:,'Binary'] == False]
+        y = dd.loc[:,variable].values
+        spikes = find_peaks(y, prominence=prom,wlen=window)
+        dd.iloc[spikes[0],1] = True
+        ix = dd[dd.loc[:,'Binary'] == True].index
+        dfs.loc[ix,'Binary'] = True
+    if not baseline:
+        ix = dfs[dfs.loc[:,'Binary'] == False].index
+        dfs['Binary'] = [False]*len(dfs)
+        dfs.loc[ix,'Binary'] = True
+    dfs['Binary'] = dfs.loc[:,'Binary'].astype(int)
+    # Sanity check
+    binary = dfs['Binary'].values
+    vprev = binary[0]
+    for i in range(1,len(binary)-1):
+        vactual = binary[i]
+        vnext = binary[i+1]
+        if vprev == 1 and vnext == 1 and vactual == 0:
+            binary[i] = 1
+        if vprev == 0 and vnext == 0 and vactual == 1:
+            binary[i] = 0
+    dfs['Binary'] = binary
+    return dfs
+
+
 def remove_baseline(x, variable, binary_ix, interpolation_method='pad', inverted=False):
-    y = pd.DataFrame(columns=['Raw','Binary','Baseline'])
-    y['Raw'] = x.loc[:,variable].copy()
-    y['Baseline'] = x.copy()
+    y = pd.DataFrame(columns=['Raw', 'Binary', 'Baseline'])
+    y['Raw'] = x.loc[:, variable].copy()
+    y['Baseline'] = y['Raw']
     y['Binary'] = binary_ix
     ix = y[y['Binary'] == 1].index
-    y.loc[ix,'Baseline'] = np.nan
-    y['Interpolation'] = y.loc[:,'Baseline'].interpolate(method=interpolation_method)
+    y.loc[ix, 'Baseline'] = np.nan
+    y['Interpolation'] = y.loc[:, 'Baseline'].interpolate(method=interpolation_method)
     if inverted:
         y['Corrected'] = y['Interpolation'] - y['Raw']
     else:

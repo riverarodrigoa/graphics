@@ -580,12 +580,12 @@ def plot_response(d, xvars, yvars, xlabl, ylabl, ylablsctr, lgn_lab, figsize, fo
                 if count < n:
                     dd_r, m, r_2, n_r = make_reg(d, xvars[count], yvars[count], degree)
                     ax[i, j] = dd_r.plot(ax=ax[i, j], grid=True, style='.', ms=marker_size, x=xvars[count], y=yvars[count], x_compat=True)
-                    x = dd_r.loc[:, xvars[count]].values
-                    y = dd_r.loc[:, yvars[count]].values
-                    z = np.polyfit(x, y, degree)
-                    p = np.poly1d(z)
+                    #x = dd_r.loc[:, xvars[count]].values
+                    #y = dd_r.loc[:, yvars[count]].values
+                    #z = np.polyfit(x, y, degree)
+                    #p = np.poly1d(z)
                     #ax[i, j].plot(x, p(x))
-                    ax[i, j] = dd_r.plot(ax=ax[i, j], grid=True, style='-', ms=marker_size,  x=xvars[count], y='y_pred', x_compat=True)
+                    ax[i, j] = dd_r.plot(ax=ax[i, j], grid=True, style='.', ms=marker_size,  x=xvars[count], y='y_pred', x_compat=True)
                     ax[i, j].lines[0].set_color('b')
                     ax[i, j].lines[1].set_color('r')
                     # ax[i, j].lines[2].set_color('k')

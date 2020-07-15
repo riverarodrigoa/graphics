@@ -7,5 +7,5 @@ tox==3.14.5
 coverage==5.0.3
 Sphinx==2.4.3
 twine==3.1.0
-Click==7.0
+Click==7.1.2
 sphinx_rtd_theme==0.4.3

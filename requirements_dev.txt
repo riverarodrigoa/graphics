@@ -9,4 +9,4 @@ coverage==5.3
 Sphinx==3.3.1
 twine==3.1.0
 Click==7.1.2
-sphinx_rtd_theme==0.4.3
+sphinx_rtd_theme==0.5.1
